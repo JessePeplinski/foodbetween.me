@@ -31,7 +31,6 @@
                             }, function (results, status) {
                                 if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
 
-                                    // Create an array of restaurants to be checked with Distance Matrix API
                                     var restaurantLocations = results.map(function (restaurant) {
                                         return restaurant.geometry.location;
                                     });
@@ -51,16 +50,22 @@
                                                 var distanceToAddress2 = rows[1].elements[i].distance.value;
                                                 var distanceDifference = Math.abs(distanceToAddress1 - distanceToAddress2);
 
-                                                // Let's say a restaurant is considered equidistant if the difference in distance to both addresses is less than 2km
                                                 if (distanceDifference < 2000) {
                                                     equidistantRestaurants.push(results[i]);
                                                 }
                                             }
 
                                             if (equidistantRestaurants.length > 0) {
-                                                var randomIndex = Math.floor(Math.random() * equidistantRestaurants.length);
-                                                var restaurant = equidistantRestaurants[randomIndex];
-                                                alert('Found an equidistant restaurant! Name: ' + restaurant.name);
+                                                // Sort the restaurants based on their rating, and pick the top 3
+                                                equidistantRestaurants.sort((a, b) => b.rating - a.rating);
+                                                var topRestaurants = equidistantRestaurants.slice(0, 3);
+
+                                                // Display the results in a div element
+                                                var resultsDiv = document.getElementById('results');
+                                                resultsDiv.innerHTML = '';  // Clear previous results
+                                                topRestaurants.forEach(function(restaurant) {
+                                                    resultsDiv.innerHTML += '<p><strong>' + restaurant.name + '</strong><br>Rating: ' + restaurant.rating + '</p>';
+                                                });
                                             } else {
                                                 alert('No equidistant restaurants found!');
                                             }
@@ -92,6 +97,7 @@
     <input id="address1" type="text" placeholder="Enter first address">
     <input id="address2" type="text" placeholder="Enter second address">
     <button onclick="findRestaurantWithDistanceMatrixAPI()">Find Restaurant</button>
+    <div id="results"></div> <!-- This div will display the top 3 results -->
 </body>
 
 </html>
