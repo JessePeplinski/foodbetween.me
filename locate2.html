@@ -59,14 +59,13 @@
                                             }
 
                                             if (equidistantRestaurants.length > 0) {
-                                                // Sort by rating and pick the top 3
                                                 equidistantRestaurants.sort((a, b) => b.details.rating - a.details.rating);
                                                 var topRestaurants = equidistantRestaurants.slice(0, 3);
 
                                                 var resultsDiv = document.getElementById('results');
                                                 resultsDiv.innerHTML = '';
                                                 topRestaurants.forEach(function (restaurant) {
-                                                    resultsDiv.innerHTML += '<p><strong>' + restaurant.details.name + '</strong><br>Rating: ' + restaurant.details.rating + '<br>Distance from Address 1: ' + restaurant.distanceToAddress1 + '<br>Distance from Address 2: ' + restaurant.distanceToAddress2 + '</p>';
+                                                    resultsDiv.innerHTML += '<p><strong>' + restaurant.details.name + '</strong><br>Rating: ' + restaurant.details.rating + '<br>Distance from ' + address1 + ': ' + restaurant.distanceToAddress1 + '<br>Distance from ' + address2 + ': ' + restaurant.distanceToAddress2 + '</p>';
                                                 });
                                             } else {
                                                 alert('No equidistant restaurants found!');
