@@ -8,6 +8,7 @@
         function findRestaurantWithDistanceMatrixAPI() {
             var address1 = document.getElementById('address1').value;
             var address2 = document.getElementById('address2').value;
+            var unitSelection = document.getElementById('unitSelection').value;
 
             var geocoder = new google.maps.Geocoder();
             geocoder.geocode({ 'address': address1 }, function (results1, status1) {
@@ -38,7 +39,8 @@
                                     distanceService.getDistanceMatrix({
                                         origins: [address1, address2],
                                         destinations: restaurantLocations,
-                                        travelMode: 'DRIVING'
+                                        travelMode: 'DRIVING',
+                                        unitSystem: unitSelection === 'miles' ? google.maps.UnitSystem.IMPERIAL : google.maps.UnitSystem.METRIC
                                     }, function (response, status) {
                                         if (status === 'OK') {
                                             var rows = response.rows;
@@ -49,7 +51,10 @@
                                                 var distanceToAddress2 = rows[1].elements[i].distance.value;
                                                 var distanceDifference = Math.abs(distanceToAddress1 - distanceToAddress2);
 
-                                                if (distanceDifference < 2000) {
+                                                // Convert meters to miles if necessary
+                                                var distanceDiffMiles = unitSelection === 'miles' ? distanceDifference * 0.000621371 : distanceDifference * 0.001;
+
+                                                if (distanceDiffMiles < 2) {
                                                     equidistantRestaurants.push({
                                                         details: results[i],
                                                         distanceToAddress1: rows[0].elements[i].distance.text,
@@ -97,6 +102,10 @@
 <body>
     <input id="address1" type="text" placeholder="Enter first address">
     <input id="address2" type="text" placeholder="Enter second address">
+    <select id="unitSelection">
+        <option value="miles" selected>Miles</option>
+        <option value="kilometers">Kilometers</option>
+    </select>
     <button onclick="findRestaurantWithDistanceMatrixAPI()">Find Restaurant</button>
     <div id="results"></div>
 </body>
