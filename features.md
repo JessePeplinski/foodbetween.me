@@ -1,7 +1,7 @@
 # Features
 
 ## Search
-- [ ] Add Dropdown for miles or kilometers selection
+- [X] Add Dropdown for miles or kilometers selection
 - [ ] Add as many addresses as you want
 - [ ] Add all modes of transportation (driving, walking, transit, etc)
 - [ ] Default to simple search functionality if no addreses are found exactly equal distance
@@ -11,9 +11,9 @@
 ## Display
 - [ ] Add a map of addresses
 - [ ] Display if the resturant is open or not (add dropdown if it should display open or closed resturants)
-- [ ] Add top positive review of resturant
-- [ ] Add top negative review of resturant
-- [ ] Add description of resturant
+- [X] Add top positive review of resturant
+- [X] Add top negative review of resturant
+- [X] Add description of resturant
 
 ## Front-end
 - [ ] Improve UI

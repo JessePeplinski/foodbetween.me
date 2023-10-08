@@ -69,8 +69,30 @@
 
                                                 var resultsDiv = document.getElementById('results');
                                                 resultsDiv.innerHTML = '';
-                                                topRestaurants.forEach(function (restaurant) {
-                                                    resultsDiv.innerHTML += '<p><strong>' + restaurant.details.name + '</strong><br>Rating: ' + restaurant.details.rating + '<br>Distance from ' + address1 + ': ' + restaurant.distanceToAddress1 + '<br>Distance from ' + address2 + ': ' + restaurant.distanceToAddress2 + '</p>';
+                                                
+                                                topRestaurants.forEach(function(restaurant) {
+                                                    getRestaurantDetails(restaurant.details.place_id, function(details) {
+                                                        var positiveReview = null;
+                                                        var negativeReview = null;
+
+                                                        if (details.reviews) {
+                                                            positiveReview = details.reviews.reduce((max, review) => (max.rating > review.rating) ? max : review);
+                                                            negativeReview = details.reviews.reduce((min, review) => (min.rating < review.rating) ? min : review);
+                                                        }
+
+                                                        resultsDiv.innerHTML += `
+                                                            <p>
+                                                                <strong>${details.name}</strong><br>
+                                                                Rating: ${details.rating}<br>
+                                                                Description: ${details.types.join(", ")}<br>
+                                                                Top Positive Review: ${positiveReview ? positiveReview.text : 'N/A'}<br>
+                                                                Top Negative Review: ${negativeReview ? negativeReview.text : 'N/A'}<br>
+                                                                Address: ${details.formatted_address}<br>
+                                                                Phone: ${details.formatted_phone_number}<br>
+                                                                <a href="${details.website}" target="_blank">Visit Website</a>
+                                                            </p>
+                                                        `;
+                                                    });
                                                 });
                                             } else {
                                                 alert('No equidistant restaurants found!');
@@ -108,6 +130,16 @@
     </select>
     <button onclick="findRestaurantWithDistanceMatrixAPI()">Find Restaurant</button>
     <div id="results"></div>
+    <script>
+        function getRestaurantDetails(placeId, callback) {
+            var service = new google.maps.places.PlacesService(document.createElement('div'));
+            service.getDetails({ placeId: placeId }, function (place, status) {
+                if (status === google.maps.places.PlacesServiceStatus.OK) {
+                    callback(place);
+                }
+            });
+        }
+    </script>
 </body>
 
 </html>
