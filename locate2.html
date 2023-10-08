@@ -3,8 +3,7 @@
 
 <head>
     <title>Find a Restaurant Between Two Home Addresses</title>
-    <script
-        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAE_VuZoJdrJOIN-ccFzTAiXEhPS2oV9M4&libraries=places"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAE_VuZoJdrJOIN-ccFzTAiXEhPS2oV9M4&libraries=places"></script>
     <script>
         function findRestaurantWithDistanceMatrixAPI() {
             var address1 = document.getElementById('address1').value;
@@ -51,20 +50,23 @@
                                                 var distanceDifference = Math.abs(distanceToAddress1 - distanceToAddress2);
 
                                                 if (distanceDifference < 2000) {
-                                                    equidistantRestaurants.push(results[i]);
+                                                    equidistantRestaurants.push({
+                                                        details: results[i],
+                                                        distanceToAddress1: rows[0].elements[i].distance.text,
+                                                        distanceToAddress2: rows[1].elements[i].distance.text
+                                                    });
                                                 }
                                             }
 
                                             if (equidistantRestaurants.length > 0) {
-                                                // Sort the restaurants based on their rating, and pick the top 3
-                                                equidistantRestaurants.sort((a, b) => b.rating - a.rating);
+                                                // Sort by rating and pick the top 3
+                                                equidistantRestaurants.sort((a, b) => b.details.rating - a.details.rating);
                                                 var topRestaurants = equidistantRestaurants.slice(0, 3);
 
-                                                // Display the results in a div element
                                                 var resultsDiv = document.getElementById('results');
-                                                resultsDiv.innerHTML = '';  // Clear previous results
-                                                topRestaurants.forEach(function(restaurant) {
-                                                    resultsDiv.innerHTML += '<p><strong>' + restaurant.name + '</strong><br>Rating: ' + restaurant.rating + '</p>';
+                                                resultsDiv.innerHTML = '';
+                                                topRestaurants.forEach(function (restaurant) {
+                                                    resultsDiv.innerHTML += '<p><strong>' + restaurant.details.name + '</strong><br>Rating: ' + restaurant.details.rating + '<br>Distance from Address 1: ' + restaurant.distanceToAddress1 + '<br>Distance from Address 2: ' + restaurant.distanceToAddress2 + '</p>';
                                                 });
                                             } else {
                                                 alert('No equidistant restaurants found!');
@@ -97,7 +99,7 @@
     <input id="address1" type="text" placeholder="Enter first address">
     <input id="address2" type="text" placeholder="Enter second address">
     <button onclick="findRestaurantWithDistanceMatrixAPI()">Find Restaurant</button>
-    <div id="results"></div> <!-- This div will display the top 3 results -->
+    <div id="results"></div>
 </body>
 
 </html>
