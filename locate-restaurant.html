@@ -80,16 +80,21 @@
                                                             negativeReview = details.reviews.reduce((min, review) => (min.rating < review.rating) ? min : review);
                                                         }
 
+                                                        var hours = details.opening_hours ? details.opening_hours.weekday_text.join('<br>') : 'N/A';
+                                                        var isOpen = details.opening_hours && details.opening_hours.open_now ? "Open Now" : "Closed";
+
                                                         resultsDiv.innerHTML += `
                                                             <p>
                                                                 <strong>${details.name}</strong><br>
+                                                                ${isOpen}
+                                                                Address: ${details.formatted_address}<br>
+                                                                Phone: ${details.formatted_phone_number}<br>
                                                                 Rating: ${details.rating}<br>
                                                                 Description: ${details.types.join(", ")}<br>
                                                                 Top Positive Review: ${positiveReview ? positiveReview.text : 'N/A'}<br>
                                                                 Top Negative Review: ${negativeReview ? negativeReview.text : 'N/A'}<br>
-                                                                Address: ${details.formatted_address}<br>
-                                                                Phone: ${details.formatted_phone_number}<br>
-                                                                <a href="${details.website}" target="_blank">Visit Website</a>
+                                                                <a href="${details.website}" target="_blank">Visit Website</a><br>
+                                                                Hours: <br>${hours}<br>
                                                             </p>
                                                         `;
                                                     });
