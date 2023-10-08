@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Find a Restaurant Between Two Home Addresses</title>
+    <script
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAE_VuZoJdrJOIN-ccFzTAiXEhPS2oV9M4&libraries=places"></script>
+    <script>
+        function findRestaurant() {
+            // Get values from input fields
+            var address1 = document.getElementById('address1').value;
+            var address2 = document.getElementById('address2').value;
+
+            // Geocode first address
+            var geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ 'address': address1 }, function (results1, status1) {
+                if (status1 === 'OK') {
+                    var latlng1 = results1[0].geometry.location;
+
+                    // Geocode second address
+                    geocoder.geocode({ 'address': address2 }, function (results2, status2) {
+                        if (status2 === 'OK') {
+                            var latlng2 = results2[0].geometry.location;
+
+                            // Calculate midpoint
+                            var midLat = (latlng1.lat() + latlng2.lat()) / 2;
+                            var midLng = (latlng1.lng() + latlng2.lng()) / 2;
+                            var midpoint = new google.maps.LatLng(midLat, midLng);
+
+                            // Search for restaurants around the midpoint
+                            var service = new google.maps.places.PlacesService(document.createElement('div'));
+                            service.nearbySearch({
+                                location: midpoint,
+                                radius: 5000,  // adjust this as necessary
+                                type: ['restaurant']
+                            }, function (results, status) {
+                                if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
+                                    // Pick a random restaurant from the results
+                                    var randomIndex = Math.floor(Math.random() * results.length);
+                                    var restaurant = results[randomIndex];
+                                    alert('Found a restaurant! Name: ' + restaurant.name);
+                                } else {
+                                    alert('No restaurants found near the midpoint!');
+                                }
+                            });
+                        } else {
+                            alert('Error geocoding second address: ' + status2);
+                        }
+                    });
+                } else {
+                    alert('Error geocoding first address: ' + status1);
+                }
+            });
+        }
+    </script>
+</head>
+
+<body>
+    <input id="address1" type="text" placeholder="Enter first address">
+    <input id="address2" type="text" placeholder="Enter second address">
+    <button onclick="findRestaurant()">Find Restaurant</button>
+</body>
+
+</html>
