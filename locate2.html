@@ -6,7 +6,7 @@
     <script
         src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAE_VuZoJdrJOIN-ccFzTAiXEhPS2oV9M4&libraries=places"></script>
     <script>
-        function findRestaurant() {
+        function findRestaurantSimpleMidpointSearch() {
             // Get values from input fields
             var address1 = document.getElementById('address1').value;
             var address2 = document.getElementById('address2').value;
@@ -52,13 +52,92 @@
                 }
             });
         }
+        function findRestaurantWithDistanceMatrixAPI() {
+            var address1 = document.getElementById('address1').value;
+            var address2 = document.getElementById('address2').value;
+
+            var geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ 'address': address1 }, function (results1, status1) {
+                if (status1 === 'OK') {
+                    var latlng1 = results1[0].geometry.location;
+
+                    geocoder.geocode({ 'address': address2 }, function (results2, status2) {
+                        if (status2 === 'OK') {
+                            var latlng2 = results2[0].geometry.location;
+
+                            var midLat = (latlng1.lat() + latlng2.lat()) / 2;
+                            var midLng = (latlng1.lng() + latlng2.lng()) / 2;
+                            var midpoint = new google.maps.LatLng(midLat, midLng);
+
+                            var service = new google.maps.places.PlacesService(document.createElement('div'));
+                            service.nearbySearch({
+                                location: midpoint,
+                                radius: 5000,
+                                type: ['restaurant']
+                            }, function (results, status) {
+                                if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
+
+                                    // Create an array of restaurants to be checked with Distance Matrix API
+                                    var restaurantLocations = results.map(function (restaurant) {
+                                        return restaurant.geometry.location;
+                                    });
+
+                                    var distanceService = new google.maps.DistanceMatrixService();
+                                    distanceService.getDistanceMatrix({
+                                        origins: [address1, address2],
+                                        destinations: restaurantLocations,
+                                        travelMode: 'DRIVING'
+                                    }, function (response, status) {
+                                        if (status === 'OK') {
+                                            var rows = response.rows;
+                                            var equidistantRestaurants = [];
+
+                                            for (var i = 0; i < restaurantLocations.length; i++) {
+                                                var distanceToAddress1 = rows[0].elements[i].distance.value;
+                                                var distanceToAddress2 = rows[1].elements[i].distance.value;
+                                                var distanceDifference = Math.abs(distanceToAddress1 - distanceToAddress2);
+
+                                                // Let's say a restaurant is considered equidistant if the difference in distance to both addresses is less than 2km
+                                                if (distanceDifference < 2000) {
+                                                    equidistantRestaurants.push(results[i]);
+                                                }
+                                            }
+
+                                            if (equidistantRestaurants.length > 0) {
+                                                var randomIndex = Math.floor(Math.random() * equidistantRestaurants.length);
+                                                var restaurant = equidistantRestaurants[randomIndex];
+                                                alert('Found an equidistant restaurant! Name: ' + restaurant.name);
+                                            } else {
+                                                alert('No equidistant restaurants found!');
+                                            }
+
+                                        } else {
+                                            alert('Distance Matrix request failed: ' + status);
+                                        }
+                                    });
+
+                                } else {
+                                    alert('No restaurants found near the midpoint!');
+                                }
+                            });
+
+                        } else {
+                            alert('Error geocoding second address: ' + status2);
+                        }
+                    });
+
+                } else {
+                    alert('Error geocoding first address: ' + status1);
+                }
+            });
+        }
     </script>
 </head>
 
 <body>
     <input id="address1" type="text" placeholder="Enter first address">
     <input id="address2" type="text" placeholder="Enter second address">
-    <button onclick="findRestaurant()">Find Restaurant</button>
+    <button onclick="findRestaurantWithDistanceMatrixAPI()">Find Restaurant</button>
 </body>
 
 </html>
