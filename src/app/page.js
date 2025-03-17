@@ -6,7 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import AddressInput from '@/components/AddressInput';
 import Map from '@/components/Map';
 import PlaceCard from '@/components/PlaceCard';
-import { AlertTriangle, Info } from 'lucide-react';
+import MidpointOptions from '@/components/MidpointOptions';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 export default function Home() {
   const [addresses, setAddresses] = useState({
@@ -19,6 +20,10 @@ export default function Home() {
   const [markers, setMarkers] = useState([]);
   const [noResultsMessage, setNoResultsMessage] = useState('');
   const [midpointInfo, setMidpointInfo] = useState(null);
+  const [searchRadius, setSearchRadius] = useState(1000);
+  const [midpointStrategy, setMidpointStrategy] = useState('optimized');
+  const [locations, setLocations] = useState(null); // Store geocoded locations
+  const [allMidpoints, setAllMidpoints] = useState([]);
   
   const handleAddressChange = (key, value) => {
     setAddresses(prev => ({
@@ -50,10 +55,32 @@ export default function Home() {
         throw new Error('Failed to geocode one or both addresses');
       }
       
-      // Get advanced midpoint calculation
+      // Store locations for future use
+      setLocations({
+        location1: location1.data,
+        location2: location2.data
+      });
+      
+      // Get midpoint calculation with the selected strategy
+      await calculateMidpoint(
+        location1.data.lat, 
+        location1.data.lng, 
+        location2.data.lat, 
+        location2.data.lng, 
+        midpointStrategy
+      );
+    } catch (error) {
+      console.error('Error:', error);
+      alert(`An error occurred: ${error.message}`);
+      setLoading(false);
+    }
+  };
+  
+  const calculateMidpoint = async (lat1, lng1, lat2, lng2, strategy) => {
+    try {
       const midpointRes = await fetch(
-        `/api/midpoint?lat1=${location1.data.lat}&lng1=${location1.data.lng}` +
-        `&lat2=${location2.data.lat}&lng2=${location2.data.lng}`
+        `/api/midpoint?lat1=${lat1}&lng1=${lng1}` +
+        `&lat2=${lat2}&lng2=${lng2}&strategy=${strategy}`
       );
       
       if (!midpointRes.ok) {
@@ -69,17 +96,31 @@ export default function Home() {
       const mid = midpointData.data.midpoint;
       setMidpoint(mid);
       setMidpointInfo(midpointData.data);
+      setAllMidpoints(midpointData.data.allMidpoints || []);
       
       // Set markers for the map
       const initialMarkers = [
-        { position: location1.data, label: 'A', title: 'Address 1' },
-        { position: location2.data, label: 'B', title: 'Address 2' },
+        { position: { lat: lat1, lng: lng1 }, label: 'A', title: 'Address 1' },
+        { position: { lat: lat2, lng: lng2 }, label: 'B', title: 'Address 2' },
         { position: mid, label: 'M', title: 'Meeting Point' },
       ];
       setMarkers(initialMarkers);
       
+      // Search for places with the current radius
+      await searchPlaces(mid.lat, mid.lng, searchRadius, initialMarkers);
+    } catch (error) {
+      console.error('Midpoint calculation error:', error);
+      alert(`Failed to calculate midpoint: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const searchPlaces = async (lat, lng, radius, initialMarkers = markers) => {
+    setLoading(true);
+    try {
       // Find nearby places
-      const placesRes = await fetch(`/api/places?lat=${mid.lat}&lng=${mid.lng}`);
+      const placesRes = await fetch(`/api/places?lat=${lat}&lng=${lng}&radius=${radius}`);
       
       if (!placesRes.ok) {
         throw new Error(`Places API error: ${placesRes.status}`);
@@ -90,6 +131,7 @@ export default function Home() {
       if (placesData.success) {
         if (Array.isArray(placesData.data) && placesData.data.length > 0) {
           setPlaces(placesData.data);
+          setNoResultsMessage('');
           
           // Add place markers for valid places only
           const placeMarkers = placesData.data
@@ -105,7 +147,12 @@ export default function Home() {
           }
         } else {
           // No places found but API call was successful
-          setNoResultsMessage('No restaurants found near the meeting point. Try different addresses or consider expanding your search area.');
+          setPlaces([]);
+          setNoResultsMessage(
+            `No restaurants found within ${radius/1000} km of the meeting point. ` +
+            `Try a different meeting point method or increase the search radius.`
+          );
+          setMarkers(initialMarkers); // Reset to just the initial markers
         }
       } else {
         // API returned an error
@@ -113,49 +160,50 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error:', error);
-      alert(`An error occurred: ${error.message}`);
+      alert(`An error occurred searching for places: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
   
-  // Format travel time information
-  const formatMidpointInfo = () => {
-    if (!midpointInfo || !midpointInfo.details) return null;
+  const handleRadiusChange = (newRadius) => {
+    setSearchRadius(newRadius);
+    if (midpoint) {
+      searchPlaces(midpoint.lat, midpoint.lng, newRadius);
+    }
+  };
+  
+  const handleStrategyChange = (strategy) => {
+    setMidpointStrategy(strategy);
     
-    const details = midpointInfo.details;
-    
-    if (midpointInfo.method === 'optimized') {
-      return (
-        <>
-          <h3 className="text-sm font-semibold">Optimized Meeting Point</h3>
-          <div className="text-xs mt-1">
-            <p>Travel time from Address 1: ~{details.travelTime1} minutes</p>
-            <p>Travel time from Address 2: ~{details.travelTime2} minutes</p>
-            <p>Nearby restaurants: {details.restaurantCount}</p>
-          </div>
-        </>
-      );
-    } else if (midpointInfo.method === 'restaurant_density_fallback') {
-      return (
-        <>
-          <h3 className="text-sm font-semibold">Restaurant-Rich Meeting Point</h3>
-          <div className="text-xs mt-1">
-            <p>Selected based on restaurant density</p>
-            <p>Nearby restaurants: {details.restaurantCount}</p>
-          </div>
-        </>
-      );
-    } else {
-      return (
-        <>
-          <h3 className="text-sm font-semibold">Simple Midpoint</h3>
-          <div className="text-xs mt-1">
-            <p>Geometric middle point between addresses</p>
-          </div>
-        </>
+    // If we already have locations, recalculate midpoint with new strategy
+    if (locations) {
+      calculateMidpoint(
+        locations.location1.lat,
+        locations.location1.lng,
+        locations.location2.lat,
+        locations.location2.lng,
+        strategy
       );
     }
+  };
+  
+  const handleMidpointSelect = (newMidpoint) => {
+    if (!newMidpoint || !locations) return;
+    
+    setMidpoint(newMidpoint);
+    
+    // Update markers
+    const initialMarkers = [
+      { position: locations.location1, label: 'A', title: 'Address 1' },
+      { position: locations.location2, label: 'B', title: 'Address 2' },
+      { position: newMidpoint, label: 'M', title: 'Selected Meeting Point' },
+    ];
+    
+    setMarkers(initialMarkers);
+    
+    // Search for places at the new midpoint
+    searchPlaces(newMidpoint.lat, newMidpoint.lng, searchRadius, initialMarkers);
   };
   
   return (
@@ -181,29 +229,43 @@ export default function Home() {
           disabled={loading}
           className="px-8"
         >
-          {loading ? 'Searching...' : 'Search'}
+          {loading ? (
+            <>
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              Searching...
+            </>
+          ) : 'Search'}
         </Button>
       </div>
       
       {midpoint && (
-        <div className="mb-8">
-          <Card>
-            <CardContent className="p-0">
-              <Map 
-                center={midpoint} 
-                markers={markers}
-                zoom={13}
-                height="400px"
-              />
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Map Column */}
+          <div className="md:col-span-2">
+            <Card>
+              <CardContent className="p-0">
+                <Map 
+                  center={midpoint} 
+                  markers={markers}
+                  zoom={13}
+                  height="400px"
+                />
+              </CardContent>
+            </Card>
+          </div>
           
-          {midpointInfo && (
-            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md flex items-start gap-3">
-              <Info className="h-5 w-5 text-blue-500 mt-0.5" />
-              <div>{formatMidpointInfo()}</div>
-            </div>
-          )}
+          {/* Options Column */}
+          <div className="md:col-span-1">
+            <MidpointOptions 
+              midpointInfo={midpointInfo}
+              searchRadius={searchRadius}
+              onRadiusChange={handleRadiusChange}
+              onStrategyChange={handleStrategyChange}
+              onMidpointSelect={handleMidpointSelect}
+              selectedStrategy={midpointStrategy}
+              allMidpoints={allMidpoints}
+            />
+          </div>
         </div>
       )}
       

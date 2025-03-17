@@ -5,6 +5,7 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const lat = searchParams.get('lat');
   const lng = searchParams.get('lng');
+  const radius = searchParams.get('radius') || '1000'; // Default to 1000m but allow custom radius
   
   if (!lat || !lng) {
     return NextResponse.json(
@@ -14,9 +15,9 @@ export async function GET(request) {
   }
   
   try {
-    // First get nearby places with a 1000m radius
+    // Get nearby places with the specified radius
     const response = await fetch(
-      `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=1000&type=restaurant&key=${process.env.GOOGLE_MAPS_API_KEY}`
+      `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=restaurant&key=${process.env.GOOGLE_MAPS_API_KEY}`
     );
     
     const data = await response.json();
@@ -30,27 +31,18 @@ export async function GET(request) {
       );
     }
     
-    // If no results found with initial radius, try a larger radius
+    // If no results found, return empty array with metadata
     if (data.status === 'ZERO_RESULTS' || !data.results || data.results.length === 0) {
-      // Try a larger radius (2000m)
-      const expandedResponse = await fetch(
-        `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=2000&type=restaurant&key=${process.env.GOOGLE_MAPS_API_KEY}`
-      );
-      
-      const expandedData = await expandedResponse.json();
-      
-      // If still no results, return an empty array but with success: true
-      if (expandedData.status !== 'OK' || !expandedData.results || expandedData.results.length === 0) {
-        return NextResponse.json({
-          success: true, 
-          data: [],
-          message: 'No restaurants found near the midpoint'
-        });
-      }
-      
-      // We found results with the expanded radius
-      data.results = expandedData.results;
-      data.status = expandedData.status;
+      return NextResponse.json({
+        success: true,
+        data: [],
+        metadata: {
+          searchRadius: parseInt(radius),
+          suggestedRadius: Math.min(parseInt(radius) * 2, 5000), // Suggest double radius, max 5km
+          originalLocation: { lat, lng }
+        },
+        message: 'No restaurants found with the current search radius'
+      });
     }
     
     // Get top 3 places
@@ -84,6 +76,10 @@ export async function GET(request) {
     return NextResponse.json({
       success: true,
       data: detailedPlaces,
+      metadata: {
+        searchRadius: parseInt(radius),
+        originalLocation: { lat, lng }
+      }
     });
   } catch (error) {
     console.error('Places API error:', error);
