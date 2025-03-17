@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import AddressInput from '@/components/AddressInput';
 import Map from '@/components/Map';
 import PlaceCard from '@/components/PlaceCard';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Info } from 'lucide-react';
 
 export default function Home() {
   const [addresses, setAddresses] = useState({
@@ -18,6 +18,7 @@ export default function Home() {
   const [places, setPlaces] = useState([]);
   const [markers, setMarkers] = useState([]);
   const [noResultsMessage, setNoResultsMessage] = useState('');
+  const [midpointInfo, setMidpointInfo] = useState(null);
   
   const handleAddressChange = (key, value) => {
     setAddresses(prev => ({
@@ -33,8 +34,9 @@ export default function Home() {
     }
     
     setLoading(true);
-    setPlaces([]); // Clear existing places when starting a new search
-    setNoResultsMessage(''); // Clear any previous "no results" message
+    setPlaces([]); // Clear existing places
+    setNoResultsMessage(''); // Clear any previous messages
+    setMidpointInfo(null);
     
     try {
       // Geocode addresses
@@ -48,19 +50,31 @@ export default function Home() {
         throw new Error('Failed to geocode one or both addresses');
       }
       
-      // Calculate midpoint
-      const mid = {
-        lat: (location1.data.lat + location2.data.lat) / 2,
-        lng: (location1.data.lng + location2.data.lng) / 2,
-      };
+      // Get advanced midpoint calculation
+      const midpointRes = await fetch(
+        `/api/midpoint?lat1=${location1.data.lat}&lng1=${location1.data.lng}` +
+        `&lat2=${location2.data.lat}&lng2=${location2.data.lng}`
+      );
       
+      if (!midpointRes.ok) {
+        throw new Error(`Midpoint calculation error: ${midpointRes.status}`);
+      }
+      
+      const midpointData = await midpointRes.json();
+      
+      if (!midpointData.success) {
+        throw new Error(midpointData.error || 'Failed to calculate midpoint');
+      }
+      
+      const mid = midpointData.data.midpoint;
       setMidpoint(mid);
+      setMidpointInfo(midpointData.data);
       
       // Set markers for the map
       const initialMarkers = [
         { position: location1.data, label: 'A', title: 'Address 1' },
         { position: location2.data, label: 'B', title: 'Address 2' },
-        { position: mid, label: 'M', title: 'Midpoint' },
+        { position: mid, label: 'M', title: 'Meeting Point' },
       ];
       setMarkers(initialMarkers);
       
@@ -72,7 +86,6 @@ export default function Home() {
       }
       
       const placesData = await placesRes.json();
-      console.log('Places API response:', placesData); // Helpful for debugging
       
       if (placesData.success) {
         if (Array.isArray(placesData.data) && placesData.data.length > 0) {
@@ -92,7 +105,7 @@ export default function Home() {
           }
         } else {
           // No places found but API call was successful
-          setNoResultsMessage('No restaurants found near the midpoint. Try different addresses or consider expanding your search area.');
+          setNoResultsMessage('No restaurants found near the meeting point. Try different addresses or consider expanding your search area.');
         }
       } else {
         // API returned an error
@@ -103,6 +116,45 @@ export default function Home() {
       alert(`An error occurred: ${error.message}`);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  // Format travel time information
+  const formatMidpointInfo = () => {
+    if (!midpointInfo || !midpointInfo.details) return null;
+    
+    const details = midpointInfo.details;
+    
+    if (midpointInfo.method === 'optimized') {
+      return (
+        <>
+          <h3 className="text-sm font-semibold">Optimized Meeting Point</h3>
+          <div className="text-xs mt-1">
+            <p>Travel time from Address 1: ~{details.travelTime1} minutes</p>
+            <p>Travel time from Address 2: ~{details.travelTime2} minutes</p>
+            <p>Nearby restaurants: {details.restaurantCount}</p>
+          </div>
+        </>
+      );
+    } else if (midpointInfo.method === 'restaurant_density_fallback') {
+      return (
+        <>
+          <h3 className="text-sm font-semibold">Restaurant-Rich Meeting Point</h3>
+          <div className="text-xs mt-1">
+            <p>Selected based on restaurant density</p>
+            <p>Nearby restaurants: {details.restaurantCount}</p>
+          </div>
+        </>
+      );
+    } else {
+      return (
+        <>
+          <h3 className="text-sm font-semibold">Simple Midpoint</h3>
+          <div className="text-xs mt-1">
+            <p>Geometric middle point between addresses</p>
+          </div>
+        </>
+      );
     }
   };
   
@@ -145,6 +197,13 @@ export default function Home() {
               />
             </CardContent>
           </Card>
+          
+          {midpointInfo && (
+            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md flex items-start gap-3">
+              <Info className="h-5 w-5 text-blue-500 mt-0.5" />
+              <div>{formatMidpointInfo()}</div>
+            </div>
+          )}
         </div>
       )}
       
@@ -157,7 +216,7 @@ export default function Home() {
       
       {places.length > 0 && (
         <div>
-          <h2 className="text-2xl font-semibold mb-4">Top Places Near Midpoint</h2>
+          <h2 className="text-2xl font-semibold mb-4">Top Places Near Meeting Point</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {places.map((place, index) => (
               <PlaceCard key={place.place_id} place={place} index={index + 1} />
