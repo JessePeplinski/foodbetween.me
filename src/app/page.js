@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import AddressInput from '@/components/AddressInput';
 import Map from '@/components/Map';
 import PlaceCard from '@/components/PlaceCard';
+import { AlertTriangle } from 'lucide-react';
 
 export default function Home() {
   const [addresses, setAddresses] = useState({
@@ -16,6 +17,7 @@ export default function Home() {
   const [midpoint, setMidpoint] = useState(null);
   const [places, setPlaces] = useState([]);
   const [markers, setMarkers] = useState([]);
+  const [noResultsMessage, setNoResultsMessage] = useState('');
   
   const handleAddressChange = (key, value) => {
     setAddresses(prev => ({
@@ -32,6 +34,7 @@ export default function Home() {
     
     setLoading(true);
     setPlaces([]); // Clear existing places when starting a new search
+    setNoResultsMessage(''); // Clear any previous "no results" message
     
     try {
       // Geocode addresses
@@ -89,7 +92,7 @@ export default function Home() {
           }
         } else {
           // No places found but API call was successful
-          alert('No places found near the midpoint. Try different addresses.');
+          setNoResultsMessage('No restaurants found near the midpoint. Try different addresses or consider expanding your search area.');
         }
       } else {
         // API returned an error
@@ -142,6 +145,13 @@ export default function Home() {
               />
             </CardContent>
           </Card>
+        </div>
+      )}
+      
+      {noResultsMessage && (
+        <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-md flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-500" />
+          <p className="text-amber-800">{noResultsMessage}</p>
         </div>
       )}
       
