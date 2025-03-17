@@ -4,11 +4,11 @@
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Info, Search, MapPin } from 'lucide-react';
+import { Info, Search, MapPin, Repeat } from 'lucide-react';
 
 const MidpointOptions = ({ 
   midpointInfo,
-  searchRadius = 1000, 
+  searchRadius = 1609, // Default to 1 mile in meters
   onRadiusChange,
   onStrategyChange,
   onMidpointSelect,
@@ -16,6 +16,7 @@ const MidpointOptions = ({
   allMidpoints = []
 }) => {
   const [showAllMidpoints, setShowAllMidpoints] = useState(false);
+  const [unitType, setUnitType] = useState('miles'); // Default to miles
   
   const strategies = [
     { id: 'optimized', name: 'Optimized (Time & Restaurants)', icon: <Search className="h-4 w-4" /> },
@@ -24,12 +25,45 @@ const MidpointOptions = ({
     { id: 'geographic', name: 'Geographic Midpoint', icon: <MapPin className="h-4 w-4" /> }
   ];
   
-  const radiusOptions = [
-    { value: 1000, label: '1 km' },
-    { value: 2000, label: '2 km' },
-    { value: 3000, label: '3 km' },
-    { value: 5000, label: '5 km' }
-  ];
+  // Radius options based on unit type
+  const radiusOptions = unitType === 'miles' 
+    ? [
+        { value: 1609, label: '1 mi' },
+        { value: 3219, label: '2 mi' },
+        { value: 4828, label: '3 mi' },
+        { value: 8047, label: '5 mi' }
+      ]
+    : [
+        { value: 1000, label: '1 km' },
+        { value: 2000, label: '2 km' },
+        { value: 3000, label: '3 km' },
+        { value: 5000, label: '5 km' }
+      ];
+      
+  // Toggle between miles and kilometers
+  const toggleUnitType = () => {
+    const newUnitType = unitType === 'miles' ? 'kilometers' : 'miles';
+    setUnitType(newUnitType);
+    
+    // Convert current radius to the new unit
+    let newRadius;
+    if (newUnitType === 'miles') {
+      // Convert from km to miles (approximate conversion)
+      newRadius = Math.round(searchRadius / 1000 * 1609);
+    } else {
+      // Convert from miles to km (approximate conversion)
+      newRadius = Math.round(searchRadius / 1609 * 1000);
+    }
+    
+    // Find the closest standard radius value
+    const closestOption = radiusOptions.reduce((prev, curr) => {
+      return (Math.abs(curr.value - newRadius) < Math.abs(prev.value - newRadius)) 
+        ? curr 
+        : prev;
+    });
+    
+    onRadiusChange(closestOption.value);
+  };
   
   return (
     <div className="space-y-4 mt-2 border border-gray-200 rounded-lg p-4 bg-white">
@@ -90,7 +124,18 @@ const MidpointOptions = ({
       
       {/* Search Radius Selection */}
       <div>
-        <Label className="mb-2 block">Search Radius</Label>
+        <div className="flex justify-between items-center mb-2">
+          <Label>Search Radius</Label>
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="h-7 px-2 flex items-center gap-1"
+            onClick={toggleUnitType}
+          >
+            <Repeat className="h-3 w-3" />
+            {unitType === 'miles' ? 'Switch to km' : 'Switch to miles'}
+          </Button>
+        </div>
         <div className="grid grid-cols-4 gap-2">
           {radiusOptions.map(option => (
             <Button

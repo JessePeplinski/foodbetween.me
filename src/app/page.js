@@ -20,7 +20,7 @@ export default function Home() {
   const [markers, setMarkers] = useState([]);
   const [noResultsMessage, setNoResultsMessage] = useState('');
   const [midpointInfo, setMidpointInfo] = useState(null);
-  const [searchRadius, setSearchRadius] = useState(1000);
+  const [searchRadius, setSearchRadius] = useState(1609); // Default to 1 mile (1609 meters)
   const [midpointStrategy, setMidpointStrategy] = useState('optimized');
   const [locations, setLocations] = useState(null); // Store geocoded locations
   const [allMidpoints, setAllMidpoints] = useState([]);
@@ -148,8 +148,15 @@ export default function Home() {
         } else {
           // No places found but API call was successful
           setPlaces([]);
+          
+          // Determine if we're using miles or kilometers based on the current radius
+          const usingMiles = [1609, 3219, 4828, 8047].includes(radius);
+          const distanceDisplay = usingMiles 
+            ? `${Math.round(radius/1609)} mile${radius > 1609 ? 's' : ''}` 
+            : `${radius/1000} km`;
+            
           setNoResultsMessage(
-            `No restaurants found within ${radius/1000} km of the meeting point. ` +
+            `No restaurants found within ${distanceDisplay} of the meeting point. ` +
             `Try a different meeting point method or increase the search radius.`
           );
           setMarkers(initialMarkers); // Reset to just the initial markers
