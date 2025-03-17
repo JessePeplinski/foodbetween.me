@@ -6,6 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star, ExternalLink, Copy, Clock } from "lucide-react";
 
 const PlaceCard = ({ place, index }) => {
+  // Defensive check for valid place data
+  if (!place || !place.name) {
+    console.error('Invalid place data received');
+    return null;
+  }
+  
   const copyAddress = () => {
     if (place.vicinity) {
       navigator.clipboard.writeText(place.vicinity);
@@ -20,7 +26,7 @@ const PlaceCard = ({ place, index }) => {
           <CardTitle className="text-xl font-bold">
             {index}. {place.name}
           </CardTitle>
-          {place.opening_hours && (
+          {place.opening_hours && typeof place.opening_hours.open_now === 'boolean' && (
             <div className={`text-sm font-medium flex items-center ${place.opening_hours.open_now ? 'text-green-600' : 'text-red-600'}`}>
               <Clock className="h-4 w-4 mr-1" />
               {place.opening_hours.open_now ? 'Open' : 'Closed'}
@@ -28,15 +34,17 @@ const PlaceCard = ({ place, index }) => {
           )}
         </div>
         <div className="text-sm text-gray-500">
-          {place.types?.map(type => type.replace(/_/g, ' ')).slice(0, 2).join(', ')}
+          {place.types && Array.isArray(place.types) 
+            ? place.types.map(type => type.replace(/_/g, ' ')).slice(0, 2).join(', ')
+            : ''}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {place.rating && (
+        {typeof place.rating === 'number' && (
           <div className="flex items-center">
             <Star className="h-5 w-5 text-yellow-500 mr-1" />
             <span className="font-medium">{place.rating}</span>
-            {place.user_ratings_total && (
+            {typeof place.user_ratings_total === 'number' && (
               <span className="text-sm text-gray-500 ml-1">
                 ({place.user_ratings_total} reviews)
               </span>
@@ -45,16 +53,20 @@ const PlaceCard = ({ place, index }) => {
         )}
         
         <div className="text-sm">
-          <p className="mb-1">{place.vicinity}</p>
+          {place.vicinity && <p className="mb-1">{place.vicinity}</p>}
           {place.formatted_phone_number && (
             <p>{place.formatted_phone_number}</p>
           )}
         </div>
         
-        {place.reviews && place.reviews.length > 0 && (
+        {place.reviews && Array.isArray(place.reviews) && place.reviews.length > 0 && (
           <div className="space-y-2">
             <p className="text-sm font-medium">Top Review:</p>
-            <p className="text-xs italic">{place.reviews[0].text.slice(0, 100)}...</p>
+            <p className="text-xs italic">
+              {place.reviews[0].text 
+                ? `${place.reviews[0].text.slice(0, 100)}...` 
+                : 'No review text available'}
+            </p>
           </div>
         )}
         

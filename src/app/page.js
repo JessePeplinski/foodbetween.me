@@ -31,6 +31,7 @@ export default function Home() {
     }
     
     setLoading(true);
+    setPlaces([]); // Clear existing places when starting a new search
     
     try {
       // Geocode addresses
@@ -53,31 +54,50 @@ export default function Home() {
       setMidpoint(mid);
       
       // Set markers for the map
-      setMarkers([
+      const initialMarkers = [
         { position: location1.data, label: 'A', title: 'Address 1' },
         { position: location2.data, label: 'B', title: 'Address 2' },
         { position: mid, label: 'M', title: 'Midpoint' },
-      ]);
+      ];
+      setMarkers(initialMarkers);
       
       // Find nearby places
       const placesRes = await fetch(`/api/places?lat=${mid.lat}&lng=${mid.lng}`);
+      
+      if (!placesRes.ok) {
+        throw new Error(`Places API error: ${placesRes.status}`);
+      }
+      
       const placesData = await placesRes.json();
+      console.log('Places API response:', placesData); // Helpful for debugging
       
       if (placesData.success) {
-        setPlaces(placesData.data);
-        
-        // Add place markers
-        const placeMarkers = placesData.data.map((place, index) => ({
-          position: place.geometry.location,
-          label: `${index + 1}`,
-          title: place.name,
-        }));
-        
-        setMarkers(prev => [...prev, ...placeMarkers]);
+        if (Array.isArray(placesData.data) && placesData.data.length > 0) {
+          setPlaces(placesData.data);
+          
+          // Add place markers for valid places only
+          const placeMarkers = placesData.data
+            .filter(place => place && place.geometry && place.geometry.location)
+            .map((place, index) => ({
+              position: place.geometry.location,
+              label: `${index + 1}`,
+              title: place.name,
+            }));
+          
+          if (placeMarkers.length > 0) {
+            setMarkers([...initialMarkers, ...placeMarkers]);
+          }
+        } else {
+          // No places found but API call was successful
+          alert('No places found near the midpoint. Try different addresses.');
+        }
+      } else {
+        // API returned an error
+        throw new Error(placesData.error || 'Failed to find places');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('An error occurred. Please try again.');
+      alert(`An error occurred: ${error.message}`);
     } finally {
       setLoading(false);
     }
