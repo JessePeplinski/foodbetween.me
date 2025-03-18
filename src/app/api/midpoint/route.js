@@ -79,6 +79,7 @@ export async function GET(request) {
   const lat2 = parseFloat(searchParams.get('lat2'));
   const lng2 = parseFloat(searchParams.get('lng2'));
   const strategy = searchParams.get('strategy') || 'optimized'; // Default to optimized
+  const poiType = searchParams.get('poiType') || 'restaurant'; // Default to restaurant
   
   if (isNaN(lat1) || isNaN(lng1) || isNaN(lat2) || isNaN(lng2)) {
     return NextResponse.json(
@@ -120,49 +121,49 @@ export async function GET(request) {
       });
     }
     
-    // Restaurant density strategy
+    // POI density strategy (formerly 'restaurants')
     if (strategy === 'restaurants') {
       // 1. Generate several potential midpoints
       const potentialMidpoints = generatePotentialMidpoints(lat1, lng1, lat2, lng2);
       
-      // 2. Check restaurant density for each potential midpoint
-      const restaurantDensities = await Promise.all(
+      // 2. Check POI density for each potential midpoint
+      const poiDensities = await Promise.all(
         potentialMidpoints.map(async (point) => {
           try {
-            // Query for nearby restaurants at this midpoint
+            // Query for nearby POIs at this midpoint
             const response = await fetch(
               `https://maps.googleapis.com/maps/api/place/nearbysearch/json?` +
-              `location=${point.lat},${point.lng}&radius=1000&type=restaurant&key=${process.env.GOOGLE_MAPS_API_KEY}`
+              `location=${point.lat},${point.lng}&radius=1000&type=${poiType}&key=${process.env.GOOGLE_MAPS_API_KEY}`
             );
             
             const data = await response.json();
             
             return {
               point,
-              restaurants: data.status === 'OK' ? data.results.length : 0,
+              places: data.status === 'OK' ? data.results.length : 0,
               status: data.status
             };
           } catch (error) {
-            console.error('Error checking restaurant density:', error);
-            return { point, restaurants: 0, status: 'ERROR' };
+            console.error(`Error checking ${poiType} density:`, error);
+            return { point, places: 0, status: 'ERROR' };
           }
         })
       );
       
-      // 3. Choose the midpoint with the most restaurants
-      restaurantDensities.sort((a, b) => b.restaurants - a.restaurants);
-      const bestMidpoint = restaurantDensities[0];
+      // 3. Choose the midpoint with the most POIs
+      poiDensities.sort((a, b) => b.places - a.places);
+      const bestMidpoint = poiDensities[0];
       
       return NextResponse.json({
         success: true,
         data: {
           midpoint: bestMidpoint.point,
-          method: 'restaurants',
+          method: 'poi_density',
           details: {
-            restaurantCount: bestMidpoint.restaurants,
-            description: 'Midpoint optimized for restaurant availability'
+            poiCount: bestMidpoint.places,
+            poiType: poiType,
+            description: `Midpoint optimized for ${poiType} availability`
           }
-          // Removed detailed allMidpoints data
         }
       });
     }
@@ -172,26 +173,26 @@ export async function GET(request) {
       // 1. Generate several potential midpoints
       const potentialMidpoints = generatePotentialMidpoints(lat1, lng1, lat2, lng2);
       
-      // 2. Check restaurant density for each potential midpoint
-      const restaurantDensities = await Promise.all(
+      // 2. Check POI density for each potential midpoint
+      const poiDensities = await Promise.all(
         potentialMidpoints.map(async (point) => {
           try {
-            // Query for nearby restaurants at this midpoint
+            // Query for nearby POIs at this midpoint
             const response = await fetch(
               `https://maps.googleapis.com/maps/api/place/nearbysearch/json?` +
-              `location=${point.lat},${point.lng}&radius=1000&type=restaurant&key=${process.env.GOOGLE_MAPS_API_KEY}`
+              `location=${point.lat},${point.lng}&radius=1000&type=${poiType}&key=${process.env.GOOGLE_MAPS_API_KEY}`
             );
             
             const data = await response.json();
             
             return {
               point,
-              restaurants: data.status === 'OK' ? data.results.length : 0,
+              places: data.status === 'OK' ? data.results.length : 0,
               status: data.status
             };
           } catch (error) {
-            console.error('Error checking restaurant density:', error);
-            return { point, restaurants: 0, status: 'ERROR' };
+            console.error(`Error checking ${poiType} density:`, error);
+            return { point, places: 0, status: 'ERROR' };
           }
         })
       );
@@ -210,23 +211,24 @@ export async function GET(request) {
       if (distanceData.status !== 'OK') {
         console.error('Distance Matrix API error:', distanceData.status);
         
-        // If Distance Matrix fails, fall back to restaurant density only
-        const bestMidpoint = restaurantDensities.sort((a, b) => b.restaurants - a.restaurants)[0];
+        // If Distance Matrix fails, fall back to POI density only
+        const bestMidpoint = poiDensities.sort((a, b) => b.places - a.places)[0];
         
         return NextResponse.json({
           success: true,
           data: {
             midpoint: bestMidpoint.point,
-            method: 'restaurant_density_fallback',
+            method: 'poi_density_fallback',
             details: {
-              restaurantCount: bestMidpoint.restaurants,
-              description: 'Midpoint based on restaurant availability (time calculation failed)'
+              poiCount: bestMidpoint.places,
+              poiType: poiType,
+              description: `Midpoint based on ${poiType} availability (time calculation failed)`
             }
           }
         });
       }
       
-      // 4. Score each midpoint based on restaurant density and travel time fairness
+      // 4. Score each midpoint based on POI density and travel time fairness
       const scoredMidpoints = potentialMidpoints.map((point, i) => {
         // Get travel times for each person to this midpoint
         const travelTime1 = distanceData.rows[0].elements[i].duration?.value || Infinity;
@@ -236,23 +238,24 @@ export async function GET(request) {
         const travelTimeDifference = Math.abs(travelTime1 - travelTime2);
         const fairnessScore = 1 / (1 + travelTimeDifference / 60); // Normalize to 0-1 range
         
-        // Get restaurant density score
-        const restaurantDensity = restaurantDensities[i].restaurants;
-        const restaurantScore = Math.min(restaurantDensity / 10, 1); // Cap at 1.0
+        // Get POI density score
+        const poiDensity = poiDensities[i].places;
+        const poiScore = Math.min(poiDensity / 10, 1); // Cap at 1.0
         
         // Calculate total score (weighted average)
-        const totalScore = (fairnessScore * 0.7) + (restaurantScore * 0.3);
+        const totalScore = (fairnessScore * 0.7) + (poiScore * 0.3);
         
         return {
           point,
           score: totalScore,
           details: {
             fairnessScore,
-            restaurantScore,
+            poiScore,
             travelTime1: Math.round(travelTime1 / 60), // Convert to minutes
             travelTime2: Math.round(travelTime2 / 60), // Convert to minutes
-            restaurantCount: restaurantDensity,
-            description: 'Midpoint optimized for both travel time fairness and restaurant availability'
+            poiCount: poiDensity,
+            poiType: poiType,
+            description: `Midpoint optimized for both travel time fairness and ${poiType} availability`
           }
         };
       });

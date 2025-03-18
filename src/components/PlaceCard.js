@@ -3,7 +3,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, ExternalLink, Copy, Clock } from "lucide-react";
+import { Star, ExternalLink, Copy, Clock, MapPin, Phone } from "lucide-react";
 
 const PlaceCard = ({ place, index }) => {
   // Defensive check for valid place data
@@ -17,6 +17,17 @@ const PlaceCard = ({ place, index }) => {
       navigator.clipboard.writeText(place.vicinity);
       alert('Address copied to clipboard!');
     }
+  };
+  
+  // Format place types for display
+  const formatPlaceTypes = (types) => {
+    if (!types || !Array.isArray(types)) return '';
+    
+    return types
+      .filter(type => !['point_of_interest', 'establishment'].includes(type)) // Filter out generic types
+      .map(type => type.replace(/_/g, ' '))
+      .slice(0, 2)
+      .join(', ');
   };
   
   return (
@@ -34,9 +45,7 @@ const PlaceCard = ({ place, index }) => {
           )}
         </div>
         <div className="text-sm text-gray-500">
-          {place.types && Array.isArray(place.types) 
-            ? place.types.map(type => type.replace(/_/g, ' ')).slice(0, 2).join(', ')
-            : ''}
+          {formatPlaceTypes(place.types)}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -53,9 +62,17 @@ const PlaceCard = ({ place, index }) => {
         )}
         
         <div className="text-sm">
-          {place.vicinity && <p className="mb-1">{place.vicinity}</p>}
+          {place.vicinity && (
+            <div className="flex items-start mb-1">
+              <MapPin className="h-4 w-4 text-gray-500 mr-1 mt-0.5 shrink-0" />
+              <p>{place.vicinity}</p>
+            </div>
+          )}
           {place.formatted_phone_number && (
-            <p>{place.formatted_phone_number}</p>
+            <div className="flex items-center">
+              <Phone className="h-4 w-4 text-gray-500 mr-1" />
+              <p>{place.formatted_phone_number}</p>
+            </div>
           )}
         </div>
         
@@ -76,9 +93,16 @@ const PlaceCard = ({ place, index }) => {
               <ExternalLink className="h-4 w-4 mr-1" /> Visit Website
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={copyAddress}>
-            <Copy className="h-4 w-4 mr-1" /> Copy Address
-          </Button>
+          {place.vicinity && (
+            <Button variant="outline" size="sm" onClick={copyAddress}>
+              <Copy className="h-4 w-4 mr-1" /> Copy Address
+            </Button>
+          )}
+          {place.url && (
+            <Button variant="outline" size="sm" onClick={() => window.open(place.url, '_blank')}>
+              <ExternalLink className="h-4 w-4 mr-1" /> View on Maps
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import AddressInput from '@/components/AddressInput';
+import PoiInput from '@/components/PoiInput'; // Import the new POI Input component
 import Map from '@/components/Map';
 import PlaceCard from '@/components/PlaceCard';
 import MidpointOptions from '@/components/MidpointOptions';
@@ -14,6 +15,7 @@ export default function Home() {
     address1: '',
     address2: '',
   });
+  const [poiType, setPoiType] = useState('restaurant'); // Default to restaurant
   const [loading, setLoading] = useState(false);
   const [midpoint, setMidpoint] = useState(null);
   const [places, setPlaces] = useState([]);
@@ -23,13 +25,27 @@ export default function Home() {
   const [searchRadius, setSearchRadius] = useState(1609); // Default to 1 mile (1609 meters)
   const [midpointStrategy, setMidpointStrategy] = useState('optimized');
   const [locations, setLocations] = useState(null); // Store geocoded locations
-  // Removed allMidpoints state
   
   const handleAddressChange = (key, value) => {
     setAddresses(prev => ({
       ...prev,
       [key]: value
     }));
+  };
+  
+  const handlePoiTypeChange = (value) => {
+    setPoiType(value);
+    
+    // If we already have searched, update the results with the new POI type
+    if (midpoint && locations) {
+      calculateMidpoint(
+        locations.location1.lat,
+        locations.location1.lng,
+        locations.location2.lat,
+        locations.location2.lng,
+        midpointStrategy
+      );
+    }
   };
   
   const handleSearch = async () => {
@@ -80,7 +96,7 @@ export default function Home() {
     try {
       const midpointRes = await fetch(
         `/api/midpoint?lat1=${lat1}&lng1=${lng1}` +
-        `&lat2=${lat2}&lng2=${lng2}&strategy=${strategy}`
+        `&lat2=${lat2}&lng2=${lng2}&strategy=${strategy}&poiType=${poiType}`
       );
       
       if (!midpointRes.ok) {
@@ -105,7 +121,7 @@ export default function Home() {
       ];
       setMarkers(initialMarkers);
       
-      // Search for places with the current radius
+      // Search for places with the current radius and POI type
       await searchPlaces(mid.lat, mid.lng, searchRadius, initialMarkers);
     } catch (error) {
       console.error('Midpoint calculation error:', error);
@@ -118,8 +134,8 @@ export default function Home() {
   const searchPlaces = async (lat, lng, radius, initialMarkers = markers) => {
     setLoading(true);
     try {
-      // Find nearby places
-      const placesRes = await fetch(`/api/places?lat=${lat}&lng=${lng}&radius=${radius}`);
+      // Find nearby places with specified POI type
+      const placesRes = await fetch(`/api/places?lat=${lat}&lng=${lng}&radius=${radius}&type=${poiType}`);
       
       if (!placesRes.ok) {
         throw new Error(`Places API error: ${placesRes.status}`);
@@ -148,6 +164,12 @@ export default function Home() {
           // No places found but API call was successful
           setPlaces([]);
           
+          // Format POI type for display
+          const formattedPoiType = poiType
+            .split('_')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+          
           // Determine if we're using miles or kilometers based on the current radius
           const usingMiles = [1609, 3219, 4828, 8047].includes(radius);
           const distanceDisplay = usingMiles 
@@ -155,8 +177,8 @@ export default function Home() {
             : `${radius/1000} km`;
             
           setNoResultsMessage(
-            `No restaurants found within ${distanceDisplay} of the meeting point. ` +
-            `Try a different meeting point method or increase the search radius.`
+            `No ${formattedPoiType} locations found within ${distanceDisplay} of the meeting point. ` +
+            `Try a different meeting point method, change the POI type, or increase the search radius.`
           );
           setMarkers(initialMarkers); // Reset to just the initial markers
         }
@@ -194,13 +216,20 @@ export default function Home() {
     }
   };
   
-  // Removed handleMidpointSelect function as it's no longer needed
+  // Helper function to format POI type for display
+  const formatPoiType = (type) => {
+    if (!type) return 'Places';
+    return type
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
   
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8 text-center">Food Between Me</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <AddressInput 
           label="Address 1"
           value={addresses.address1}
@@ -210,6 +239,15 @@ export default function Home() {
           label="Address 2"
           value={addresses.address2}
           onChange={(value) => handleAddressChange('address2', value)}
+        />
+      </div>
+      
+      {/* New POI Input */}
+      <div className="mb-6">
+        <PoiInput
+          label="Points of Interest"
+          value={poiType}
+          onChange={handlePoiTypeChange}
         />
       </div>
       
@@ -249,6 +287,7 @@ export default function Home() {
             <MidpointOptions 
               midpointInfo={midpointInfo}
               searchRadius={searchRadius}
+              poiType={poiType}
               onRadiusChange={handleRadiusChange}
               onStrategyChange={handleStrategyChange}
               selectedStrategy={midpointStrategy}
@@ -266,7 +305,7 @@ export default function Home() {
       
       {places.length > 0 && (
         <div>
-          <h2 className="text-2xl font-semibold mb-4">Top Places Near Meeting Point</h2>
+          <h2 className="text-2xl font-semibold mb-4">Top {formatPoiType(poiType)} Near Meeting Point</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {places.map((place, index) => (
               <PlaceCard key={place.place_id} place={place} index={index + 1} />

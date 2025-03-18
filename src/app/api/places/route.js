@@ -6,6 +6,7 @@ export async function GET(request) {
   const lat = searchParams.get('lat');
   const lng = searchParams.get('lng');
   const radius = searchParams.get('radius') || '1000'; // Default to 1000m but allow custom radius
+  const poiType = searchParams.get('type') || 'restaurant'; // Default to restaurant if not specified
   
   if (!lat || !lng) {
     return NextResponse.json(
@@ -15,9 +16,9 @@ export async function GET(request) {
   }
   
   try {
-    // Get nearby places with the specified radius
+    // Get nearby places with the specified radius and POI type
     const response = await fetch(
-      `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=restaurant&key=${process.env.GOOGLE_MAPS_API_KEY}`
+      `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${poiType}&key=${process.env.GOOGLE_MAPS_API_KEY}`
     );
     
     const data = await response.json();
@@ -38,10 +39,11 @@ export async function GET(request) {
         data: [],
         metadata: {
           searchRadius: parseInt(radius),
+          poiType: poiType,
           suggestedRadius: Math.min(parseInt(radius) * 2, 5000), // Suggest double radius, max 5km
           originalLocation: { lat, lng }
         },
-        message: 'No restaurants found with the current search radius'
+        message: `No ${poiType} locations found with the current search radius`
       });
     }
     
@@ -78,6 +80,7 @@ export async function GET(request) {
       data: detailedPlaces,
       metadata: {
         searchRadius: parseInt(radius),
+        poiType: poiType,
         originalLocation: { lat, lng }
       }
     });

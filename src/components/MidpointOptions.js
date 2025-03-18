@@ -9,6 +9,7 @@ import { Info, Search, MapPin, Repeat } from 'lucide-react';
 const MidpointOptions = ({ 
   midpointInfo,
   searchRadius = 1609, // Default to 1 mile in meters
+  poiType = 'restaurant', // Default to restaurant
   onRadiusChange,
   onStrategyChange,
   selectedStrategy = 'optimized'
@@ -16,9 +17,9 @@ const MidpointOptions = ({
   const [unitType, setUnitType] = useState('miles'); // Default to miles
   
   const strategies = [
-    { id: 'optimized', name: 'Optimized (Time & Restaurants)', icon: <Search className="h-4 w-4" /> },
+    { id: 'optimized', name: 'Optimized (Time & POIs)', icon: <Search className="h-4 w-4" /> },
     { id: 'time', name: 'Equal Travel Time', icon: <Search className="h-4 w-4" /> },
-    { id: 'restaurants', name: 'Most Restaurants', icon: <Search className="h-4 w-4" /> },
+    { id: 'restaurants', name: `Most ${poiType === 'restaurant' ? 'Restaurants' : 'POIs'}`, icon: <Search className="h-4 w-4" /> },
     { id: 'geographic', name: 'Geographic Midpoint', icon: <MapPin className="h-4 w-4" /> }
   ];
   
@@ -62,6 +63,15 @@ const MidpointOptions = ({
     onRadiusChange(closestOption.value);
   };
   
+  // Helper function to format POI type for display
+  const formatPoiType = (type) => {
+    if (!type) return 'Places';
+    return type
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+  
   return (
     <div className="space-y-4 mt-2 border border-gray-200 rounded-lg p-4 bg-white">
       <div>
@@ -75,7 +85,8 @@ const MidpointOptions = ({
               <h4 className="text-sm font-semibold">
                 {
                   midpointInfo.method === 'optimized' ? 'Optimized Meeting Point' :
-                  midpointInfo.method === 'restaurants' ? 'Restaurant-Rich Meeting Point' :
+                  midpointInfo.method === 'restaurants' || midpointInfo.method === 'poi_density' ? 
+                    `${formatPoiType(midpointInfo.details.poiType || poiType)}-Rich Meeting Point` :
                   midpointInfo.method === 'time' ? 'Equal Travel Time Meeting Point' :
                   midpointInfo.method === 'geographic' ? 'Geographic Midpoint' :
                   'Simple Midpoint'
@@ -91,8 +102,8 @@ const MidpointOptions = ({
                     <p>Travel time from Address 2: ~{midpointInfo.details.travelTime2} minutes</p>
                   </>
                 )}
-                {midpointInfo.details.restaurantCount !== undefined && (
-                  <p>Nearby restaurants: {midpointInfo.details.restaurantCount}</p>
+                {(midpointInfo.details.poiCount !== undefined || midpointInfo.details.restaurantCount !== undefined) && (
+                  <p>Nearby {formatPoiType(midpointInfo.details.poiType || poiType)}: {midpointInfo.details.poiCount || midpointInfo.details.restaurantCount}</p>
                 )}
               </div>
             </div>
