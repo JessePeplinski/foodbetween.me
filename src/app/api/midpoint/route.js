@@ -102,13 +102,41 @@ export async function GET(request) {
     if (strategy === 'geographic') {
       const midpoint = calculateGeoMidpoint(lat1, lng1, lat2, lng2);
       
+      // Calculate approximate distances for geographic midpoint
+      const earthRadius = 6371000; // meters
+      
+      // Haversine formula for distance calculation
+      const dLat1 = toRadians(midpoint.lat - lat1);
+      const dLon1 = toRadians(midpoint.lng - lng1);
+      const a1 = Math.sin(dLat1/2) * Math.sin(dLat1/2) +
+               Math.cos(toRadians(lat1)) * Math.cos(toRadians(midpoint.lat)) * 
+               Math.sin(dLon1/2) * Math.sin(dLon1/2);
+      const c1 = 2 * Math.atan2(Math.sqrt(a1), Math.sqrt(1-a1));
+      const distance1 = earthRadius * c1;
+      
+      const dLat2 = toRadians(midpoint.lat - lat2);
+      const dLon2 = toRadians(midpoint.lng - lng2);
+      const a2 = Math.sin(dLat2/2) * Math.sin(dLat2/2) +
+               Math.cos(toRadians(lat2)) * Math.cos(toRadians(midpoint.lat)) * 
+               Math.sin(dLon2/2) * Math.sin(dLon2/2);
+      const c2 = 2 * Math.atan2(Math.sqrt(a2), Math.sqrt(1-a2));
+      const distance2 = earthRadius * c2;
+      
+      // Estimate travel times (very rough estimate: ~1 minute per km at 60km/h)
+      const travelTime1 = Math.round(distance1 / 1000 * 1);
+      const travelTime2 = Math.round(distance2 / 1000 * 1);
+      
       return NextResponse.json({
         success: true,
         data: {
           midpoint,
           method: 'geographic',
           details: {
-            description: 'Direct geographic midpoint using spherical coordinates'
+            description: 'Direct geographic midpoint using spherical coordinates',
+            distance1: Math.round(distance1),
+            distance2: Math.round(distance2),
+            travelTime1,
+            travelTime2
           }
         }
       });
@@ -239,9 +267,13 @@ export async function GET(request) {
       
       // 4. Score each midpoint based on POI density and travel time fairness
       const scoredMidpoints = potentialMidpoints.map((point, i) => {
-        // Get travel times for each person to this midpoint
+        // Get travel times and distances for each person to this midpoint
         const travelTime1 = distanceData.rows[0].elements[i].duration?.value || Infinity;
         const travelTime2 = distanceData.rows[1].elements[i].duration?.value || Infinity;
+        
+        // Get distance values
+        const distance1 = distanceData.rows[0].elements[i].distance?.value || 0;
+        const distance2 = distanceData.rows[1].elements[i].distance?.value || 0;
         
         // Calculate travel time difference (fairness score)
         const travelTimeDifference = Math.abs(travelTime1 - travelTime2);
@@ -262,6 +294,8 @@ export async function GET(request) {
             poiScore,
             travelTime1: Math.round(travelTime1 / 60), // Convert to minutes
             travelTime2: Math.round(travelTime2 / 60), // Convert to minutes
+            distance1: distance1, // Distance in meters
+            distance2: distance2, // Distance in meters
             poiCount: poiDensity,
             poiType: poiType,
             description: `Midpoint optimized for both travel time fairness and ${poiType} availability`

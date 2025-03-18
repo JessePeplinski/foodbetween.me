@@ -6,6 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Info, Clock, MapPin, Repeat } from 'lucide-react';
 
+// Helper function to format distance based on unit type
+const formatDistance = (distanceInMeters, unitType) => {
+  if (unitType === 'miles') {
+    // Convert meters to miles
+    const miles = (distanceInMeters / 1609).toFixed(1);
+    return `${miles} mi`;
+  } else {
+    // Convert meters to kilometers
+    const kilometers = (distanceInMeters / 1000).toFixed(1);
+    return `${kilometers} km`;
+  }
+};
+
 const MidpointOptions = ({ 
   midpointInfo,
   searchRadius = 1609, // Default to 1 mile in meters
@@ -16,19 +29,28 @@ const MidpointOptions = ({
 }) => {
   const [unitType, setUnitType] = useState('miles'); // Default to miles
   
-  // Simplified strategy options
+  // Helper function to format POI type for display
+  const formatPoiType = (type) => {
+    if (!type) return 'Places';
+    return type
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+  
+  // Enhanced strategy options with conditional details
   const strategies = [
     { 
       id: 'optimized', 
       name: 'Time and distance', 
       description: 'Finds a spot with similar travel times for both people, with the best POI options',
-      icon: <Clock className="h-4 w-4" /> 
+      icon: <Clock className="h-4 w-4" />
     },
     { 
       id: 'geographic', 
       name: 'Geographic midpoint', 
       description: 'Uses the actual middle point between both addresses',
-      icon: <MapPin className="h-4 w-4" /> 
+      icon: <MapPin className="h-4 w-4" />
     }
   ];
   
@@ -72,68 +94,61 @@ const MidpointOptions = ({
     onRadiusChange(closestOption.value);
   };
   
-  // Helper function to format POI type for display
-  const formatPoiType = (type) => {
-    if (!type) return 'Places';
-    return type
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
-  
   return (
     <div className="space-y-4 mt-2 border border-gray-200 rounded-lg p-4 bg-white">
       <div>
         <h3 className="text-lg font-semibold mb-2">Meeting Point Options</h3>
-        
-        {/* Description of current midpoint method */}
-        {midpointInfo && midpointInfo.details && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md flex items-start gap-3">
-            <Info className="h-5 w-5 text-blue-500 mt-0.5" />
-            <div>
-              <h4 className="text-sm font-semibold">
-                {
-                  midpointInfo.method === 'optimized' || midpointInfo.method === 'time' ? 'Time and Distance Meeting Point' :
-                  'Geographic Midpoint'
-                }
-              </h4>
-              <div className="text-xs mt-1">
-                {midpointInfo.details.description && (
-                  <p>{midpointInfo.details.description}</p>
-                )}
-                {midpointInfo.details.travelTime1 !== undefined && (
-                  <>
-                    <p>Travel time from Address 1: ~{midpointInfo.details.travelTime1} minutes</p>
-                    <p>Travel time from Address 2: ~{midpointInfo.details.travelTime2} minutes</p>
-                  </>
-                )}
-                {(midpointInfo.details.poiCount !== undefined || midpointInfo.details.restaurantCount !== undefined) && (
-                  <p>Nearby {formatPoiType(midpointInfo.details.poiType || poiType)}: {midpointInfo.details.poiCount || midpointInfo.details.restaurantCount}</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
       
-      {/* Simplified Strategy Selection */}
+      {/* Simplified Strategy Selection with enhanced details */}
       <div>
         <Label className="mb-2 block">Calculation Method</Label>
         <div className="grid grid-cols-1 gap-2">
-          {strategies.map(strategy => (
-            <div key={strategy.id}>
-              <Button
-                variant={selectedStrategy === strategy.id ? 'default' : 'outline'}
-                size="sm"
-                className="justify-start w-full"
-                onClick={() => onStrategyChange(strategy.id)}
-              >
-                {strategy.icon}
-                <span className="ml-2">{strategy.name}</span>
-              </Button>
-              <p className="text-xs text-gray-500 mt-1 ml-1">{strategy.description}</p>
-            </div>
-          ))}
+          {strategies.map(strategy => {
+            // Check if this strategy is both selected and matches the current midpoint method
+            const isActiveStrategy = selectedStrategy === strategy.id;
+            const matchesMidpointMethod = midpointInfo && 
+              ((strategy.id === 'optimized' && (midpointInfo.method === 'optimized' || midpointInfo.method === 'time')) ||
+               (strategy.id === 'geographic' && midpointInfo.method === 'geographic'));
+            
+            return (
+              <div key={strategy.id}>
+                <Button
+                  variant={isActiveStrategy ? 'default' : 'outline'}
+                  size="sm"
+                  className="justify-start w-full"
+                  onClick={() => onStrategyChange(strategy.id)}
+                >
+                  {strategy.icon}
+                  <span className="ml-2">{strategy.name}</span>
+                </Button>
+                
+                {/* Base strategy description */}
+                <div className="text-xs text-gray-500 mt-1 ml-1">
+                  <p>{strategy.description}</p>
+                  
+                  {/* Show additional details only for the active and matching strategy */}
+                  {isActiveStrategy && matchesMidpointMethod && midpointInfo.details && (
+                    <div className="mt-2 pt-2 border-t border-gray-100">
+                      {midpointInfo.details.travelTime1 !== undefined && (
+                        <div className="mt-1">
+                          <p className="font-medium text-gray-700">Travel Times and Distances:</p>
+                          <p>• From Address 1: ~{midpointInfo.details.travelTime1} minutes {midpointInfo.details.distance1 && `(${formatDistance(midpointInfo.details.distance1, unitType)})`}</p>
+                          <p>• From Address 2: ~{midpointInfo.details.travelTime2} minutes {midpointInfo.details.distance2 && `(${formatDistance(midpointInfo.details.distance2, unitType)})`}</p>
+                        </div>
+                      )}
+                      
+                      {(midpointInfo.details.poiCount !== undefined || midpointInfo.details.restaurantCount !== undefined) && (
+                        <p className="mt-1">
+                          <span className="font-medium text-gray-700">Nearby {formatPoiType(midpointInfo.details.poiType || poiType)}:</span> {midpointInfo.details.poiCount || midpointInfo.details.restaurantCount}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
       

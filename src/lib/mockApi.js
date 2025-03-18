@@ -1,7 +1,7 @@
-// src/lib/mockApi.js
+  // src/lib/mockApi.js
 
-// Mock data for geocoding responses
-const mockGeocodingData = {
+  // Mock data for geocoding responses
+  const mockGeocodingData = {
     "123 Main St, New York, NY": {
       success: true,
       data: {
@@ -35,7 +35,7 @@ const mockGeocodingData = {
       }
     }
   };
-  
+
   // For any address not in our mock data, generate a random nearby location
   const generateRandomLocation = (address) => {
     // Base location (New York City by default)
@@ -55,7 +55,7 @@ const mockGeocodingData = {
       }
     };
   };
-  
+
   // Mock places data
   const mockPlacesData = {
     restaurants: [
@@ -180,7 +180,7 @@ const mockGeocodingData = {
       }
     ]
   };
-  
+
   // Generate places for any POI type not in our mock data
   const generateMockPlacesForType = (poiType) => {
     return [
@@ -232,7 +232,7 @@ const mockGeocodingData = {
       }
     ];
   };
-  
+
   // Mock midpoint calculation
   const calculateMockMidpoint = (lat1, lng1, lat2, lng2, strategy) => {
     // Simple midpoint calculation
@@ -252,8 +252,25 @@ const mockGeocodingData = {
       description: 'Mock midpoint calculation'
     };
     
+    // Generate mock distance data (in meters)
+    // Calculate approximate distances
+    const distance1 = Math.floor(Math.random() * 5000) + 5000; // 5-10km
+    const distance2 = Math.floor(Math.random() * 5000) + 5000; // 5-10km
+    
+    // If geographic strategy, make distances more balanced
+    if (strategy === 'geographic') {
+      details = {
+        ...details,
+        description: 'Direct geographic midpoint using spherical coordinates',
+        travelTime1: Math.floor(distance1 / 1000 * 2), // ~ 2 min per km
+        travelTime2: Math.floor(distance2 / 1000 * 2), // ~ 2 min per km
+        distance1,
+        distance2
+      };
+    }
+    
     // If optimized or time strategy, add travel time details
-    if (strategy === 'optimized' || strategy === 'time') {
+    else if (strategy === 'optimized' || strategy === 'time') {
       details = {
         ...details,
         description: 'Midpoint optimized for both travel time fairness and POI availability',
@@ -261,6 +278,8 @@ const mockGeocodingData = {
         poiScore: 0.7 + Math.random() * 0.3, // Random score between 0.7 and 1.0
         travelTime1: Math.floor(Math.random() * 10) + 15, // Random time between 15-25 minutes
         travelTime2: Math.floor(Math.random() * 10) + 15, // Random time between 15-25 minutes
+        distance1,
+        distance2,
         poiCount: Math.floor(Math.random() * 15) + 5, // Random count between 5-20
         poiType: 'restaurant'
       };
@@ -275,7 +294,7 @@ const mockGeocodingData = {
       }
     };
   };
-  
+
   // Export mock API functions
   export const mockApi = {
     // Geocode an address to coordinates
@@ -347,7 +366,7 @@ const mockGeocodingData = {
       );
     }
   };
-  
+
   // Helper function to check if we should use mock API
   export const shouldUseMock = () => {
     // Only use the environment variable
