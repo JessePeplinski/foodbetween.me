@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Info, Search, MapPin, Repeat } from 'lucide-react';
+import { Info, Clock, MapPin, Repeat } from 'lucide-react';
 
 const MidpointOptions = ({ 
   midpointInfo,
@@ -16,11 +16,20 @@ const MidpointOptions = ({
 }) => {
   const [unitType, setUnitType] = useState('miles'); // Default to miles
   
+  // Simplified strategy options
   const strategies = [
-    { id: 'optimized', name: 'Optimized (Time & POIs)', icon: <Search className="h-4 w-4" /> },
-    { id: 'time', name: 'Equal Travel Time', icon: <Search className="h-4 w-4" /> },
-    { id: 'restaurants', name: `Most ${poiType === 'restaurant' ? 'Restaurants' : 'POIs'}`, icon: <Search className="h-4 w-4" /> },
-    { id: 'geographic', name: 'Geographic Midpoint', icon: <MapPin className="h-4 w-4" /> }
+    { 
+      id: 'optimized', 
+      name: 'Time and distance', 
+      description: 'Finds a spot with similar travel times for both people, with the best POI options',
+      icon: <Clock className="h-4 w-4" /> 
+    },
+    { 
+      id: 'geographic', 
+      name: 'Geographic midpoint', 
+      description: 'Uses the actual middle point between both addresses',
+      icon: <MapPin className="h-4 w-4" /> 
+    }
   ];
   
   // Radius options based on unit type
@@ -84,12 +93,8 @@ const MidpointOptions = ({
             <div>
               <h4 className="text-sm font-semibold">
                 {
-                  midpointInfo.method === 'optimized' ? 'Optimized Meeting Point' :
-                  midpointInfo.method === 'restaurants' || midpointInfo.method === 'poi_density' ? 
-                    `${formatPoiType(midpointInfo.details.poiType || poiType)}-Rich Meeting Point` :
-                  midpointInfo.method === 'time' ? 'Equal Travel Time Meeting Point' :
-                  midpointInfo.method === 'geographic' ? 'Geographic Midpoint' :
-                  'Simple Midpoint'
+                  midpointInfo.method === 'optimized' || midpointInfo.method === 'time' ? 'Time and Distance Meeting Point' :
+                  'Geographic Midpoint'
                 }
               </h4>
               <div className="text-xs mt-1">
@@ -111,21 +116,23 @@ const MidpointOptions = ({
         )}
       </div>
       
-      {/* Strategy Selection */}
+      {/* Simplified Strategy Selection */}
       <div>
         <Label className="mb-2 block">Calculation Method</Label>
         <div className="grid grid-cols-1 gap-2">
           {strategies.map(strategy => (
-            <Button
-              key={strategy.id}
-              variant={selectedStrategy === strategy.id ? 'default' : 'outline'}
-              size="sm"
-              className="justify-start"
-              onClick={() => onStrategyChange(strategy.id)}
-            >
-              {strategy.icon}
-              <span className="ml-2">{strategy.name}</span>
-            </Button>
+            <div key={strategy.id}>
+              <Button
+                variant={selectedStrategy === strategy.id ? 'default' : 'outline'}
+                size="sm"
+                className="justify-start w-full"
+                onClick={() => onStrategyChange(strategy.id)}
+              >
+                {strategy.icon}
+                <span className="ml-2">{strategy.name}</span>
+              </Button>
+              <p className="text-xs text-gray-500 mt-1 ml-1">{strategy.description}</p>
+            </div>
           ))}
         </div>
       </div>
