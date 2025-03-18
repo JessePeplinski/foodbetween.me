@@ -1,5 +1,6 @@
 // src/app/api/places/route.js
 import { NextResponse } from 'next/server';
+import { mockApi, shouldUseMock } from '@/lib/mockApi';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -16,6 +17,14 @@ export async function GET(request) {
   }
   
   try {
+    // Use mock API if we're in development/testing mode
+    if (shouldUseMock()) {
+      console.log('[MOCK API] Using mock places API for:', { lat, lng, radius, poiType });
+      const mockResponse = await mockApi.findPlaces(lat, lng, radius, poiType);
+      return NextResponse.json(mockResponse);
+    }
+    
+    // Otherwise use the real Google API
     // Get nearby places with the specified radius and POI type
     const response = await fetch(
       `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${poiType}&key=${process.env.GOOGLE_MAPS_API_KEY}`

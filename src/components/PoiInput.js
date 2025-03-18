@@ -4,6 +4,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { setupMockGoogleMaps } from '@/lib/mockMapComponents';
+import { shouldUseMock } from '@/lib/mockApi';
 
 // Common place types supported by Google Places API
 const COMMON_PLACE_TYPES = [
@@ -28,6 +30,18 @@ const COMMON_PLACE_TYPES = [
 
 // Function to load Google Maps script - reusing from AddressInput.js
 const loadGoogleMapsScript = () => {
+  // Check if we should use mock API
+  if (shouldUseMock()) {
+    console.log('[MOCK] Using mock Google Maps for PoiInput');
+    if (!globalThis.googleMapsPromise) {
+      globalThis.googleMapsPromise = new Promise((resolve) => {
+        setupMockGoogleMaps();
+        resolve(window.google);
+      });
+    }
+    return globalThis.googleMapsPromise;
+  }
+  
   if (!globalThis.googleMapsPromise && typeof window !== 'undefined') {
     globalThis.googleMapsPromise = new Promise((resolve, reject) => {
       // Check if script already exists

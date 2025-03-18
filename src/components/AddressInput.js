@@ -4,12 +4,27 @@
 import { useEffect, useRef, useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { setupMockGoogleMaps } from '@/lib/mockMapComponents';
+import { shouldUseMock } from '@/lib/mockApi';
 
 // Create a global promise to track the loading of the Google Maps script
 let googleMapsPromise = null;
 
 // Function to load the Google Maps script only once
 const loadGoogleMapsScript = () => {
+  // Check if we should use mock API
+  if (shouldUseMock()) {
+    console.log('[MOCK] Using mock Google Maps for AddressInput');
+    if (!googleMapsPromise) {
+      googleMapsPromise = new Promise((resolve) => {
+        setupMockGoogleMaps();
+        resolve(window.google);
+      });
+    }
+    return googleMapsPromise;
+  }
+  
+  // Real Google Maps implementation
   if (!googleMapsPromise && typeof window !== 'undefined') {
     googleMapsPromise = new Promise((resolve, reject) => {
       // Check if script already exists

@@ -1,5 +1,6 @@
 // src/app/api/midpoint/route.js
 import { NextResponse } from 'next/server';
+import { mockApi, shouldUseMock } from '@/lib/mockApi';
 
 // Helper function to convert degrees to radians
 function toRadians(degrees) {
@@ -89,6 +90,14 @@ export async function GET(request) {
   }
   
   try {
+    // Use mock API if we're in development/testing mode
+    if (shouldUseMock()) {
+      console.log('[MOCK API] Using mock midpoint API for:', { lat1, lng1, lat2, lng2, strategy, poiType });
+      const mockResponse = await mockApi.calculateMidpoint(lat1, lng1, lat2, lng2, strategy, poiType);
+      return NextResponse.json(mockResponse);
+    }
+    
+    // Rest of the original implementation for production use
     // Simple strategy just returns the geographic midpoint
     if (strategy === 'geographic') {
       const midpoint = calculateGeoMidpoint(lat1, lng1, lat2, lng2);

@@ -2,6 +2,8 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { setupMockGoogleMaps } from '@/lib/mockMapComponents';
+import { shouldUseMock } from '@/lib/mockApi';
 
 const Map = ({ center, markers = [], zoom = 12, height = '400px' }) => {
   const mapRef = useRef(null);
@@ -9,18 +11,32 @@ const Map = ({ center, markers = [], zoom = 12, height = '400px' }) => {
   const markersRef = useRef([]);
   
   useEffect(() => {
-    // Load Google Maps script if not already loaded
-    if (!window.google && !document.getElementById('google-maps-script')) {
-      const script = document.createElement('script');
-      script.id = 'google-maps-script';
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`;
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
+    // Determine if we should use mock API
+    const useMock = shouldUseMock();
+    
+    if (useMock) {
+      // Use mock Google Maps setup
+      console.log('[MOCK] Using mock Google Maps for Map component');
+      const mockInitialized = setupMockGoogleMaps();
       
-      script.onload = initMap;
-    } else if (window.google) {
-      initMap();
+      if (mockInitialized || window.google) {
+        initMap();
+      }
+    } else {
+      // Use real Google Maps API
+      // Load Google Maps script if not already loaded
+      if (!window.google && !document.getElementById('google-maps-script')) {
+        const script = document.createElement('script');
+        script.id = 'google-maps-script';
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+        
+        script.onload = initMap;
+      } else if (window.google) {
+        initMap();
+      }
     }
   }, []);
   
