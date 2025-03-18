@@ -6,6 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star, ExternalLink, Copy, Clock, MapPin, Phone } from "lucide-react";
 
 const PlaceCard = ({ place, index }) => {
+  // Debugging - log the place object to console
+  console.log(`Place ${index} data:`, {
+    id: place.place_id,
+    name: place.name,
+    hasUrl: !!place.url,
+    url: place.url,
+    rating: place.rating,
+    ratingType: typeof place.rating,
+    hasRatingsTotal: !!place.user_ratings_total,
+    ratingsTotal: place.user_ratings_total
+  });
+  
   // Defensive check for valid place data
   if (!place || !place.name) {
     console.error('Invalid place data received');
@@ -54,9 +66,21 @@ const PlaceCard = ({ place, index }) => {
             <Star className="h-5 w-5 text-yellow-500 mr-1" />
             <span className="font-medium">{place.rating}</span>
             {typeof place.user_ratings_total === 'number' && (
-              <span className="text-sm text-gray-500 ml-1">
-                ({place.user_ratings_total} reviews)
-              </span>
+              <div className="flex items-center">
+                <span className="text-sm text-gray-500 ml-1">
+                  ({place.user_ratings_total} reviews)
+                </span>
+                {place.url && (
+                  <a 
+                    href={`${place.url}#reviews`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:underline ml-2"
+                  >
+                    see all
+                  </a>
+                )}
+              </div>
             )}
           </div>
         )}

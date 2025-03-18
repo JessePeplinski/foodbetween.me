@@ -55,7 +55,7 @@ export async function GET(request) {
       topPlaces.map(async (place) => {
         try {
           const detailsResponse = await fetch(
-            `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=name,rating,formatted_phone_number,opening_hours,website,reviews,vicinity,types,user_ratings_total,geometry&key=${process.env.GOOGLE_MAPS_API_KEY}`
+            `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&fields=name,rating,formatted_phone_number,opening_hours,website,reviews,vicinity,types,user_ratings_total,geometry,url&key=${process.env.GOOGLE_MAPS_API_KEY}`
           );
           
           const detailsData = await detailsResponse.json();
