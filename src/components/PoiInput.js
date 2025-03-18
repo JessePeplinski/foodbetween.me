@@ -143,7 +143,7 @@ const PoiInput = ({ label, value, onChange }) => {
         onChange={handleInputChange}
         onFocus={() => setShowSuggestions(suggestions.length > 0)}
         onBlur={handleInputBlur}
-        placeholder="Type of place to search for"
+        placeholder="restaurant, cafe, bar, bakery"
       />
       
       {showSuggestions && (
