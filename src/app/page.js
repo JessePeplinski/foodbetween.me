@@ -304,7 +304,7 @@ export default function Home() {
       )}
       
       {places.length > 0 && (
-        <div>
+        <div className="results">
           <h2 className="text-2xl font-semibold mb-4">Top {formatPoiType(poiType)} Near Meeting Point</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {places.map((place, index) => (
