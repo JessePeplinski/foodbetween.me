@@ -11,11 +11,8 @@ const MidpointOptions = ({
   searchRadius = 1609, // Default to 1 mile in meters
   onRadiusChange,
   onStrategyChange,
-  onMidpointSelect,
-  selectedStrategy = 'optimized',
-  allMidpoints = []
+  selectedStrategy = 'optimized'
 }) => {
-  const [showAllMidpoints, setShowAllMidpoints] = useState(false);
   const [unitType, setUnitType] = useState('miles'); // Default to miles
   
   const strategies = [
@@ -149,51 +146,6 @@ const MidpointOptions = ({
           ))}
         </div>
       </div>
-      
-      {/* Alternative Midpoints (if available) */}
-      {allMidpoints.length > 1 && (
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <Label>Alternative Meeting Points</Label>
-            <Button 
-              variant="link" 
-              size="sm" 
-              onClick={() => setShowAllMidpoints(!showAllMidpoints)}
-              className="h-auto p-0"
-            >
-              {showAllMidpoints ? 'Hide' : 'Show'} ({allMidpoints.length - 1})
-            </Button>
-          </div>
-          
-          {showAllMidpoints && (
-            <div className="space-y-2 mt-2">
-              {allMidpoints.map((point, index) => (
-                <div 
-                  key={index}
-                  className={`p-2 border rounded-md ${index === 0 ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'} cursor-pointer hover:border-blue-400`}
-                  onClick={() => onMidpointSelect(point)}
-                >
-                  <h5 className="text-sm font-medium">Option {index + 1}</h5>
-                  <div className="text-xs mt-1 space-y-1">
-                    {point.restaurantCount !== undefined && (
-                      <p>Nearby restaurants: {point.restaurantCount}</p>
-                    )}
-                    {point.travelTime1 !== undefined && (
-                      <>
-                        <p>Travel time A: ~{point.travelTime1} min</p>
-                        <p>Travel time B: ~{point.travelTime2} min</p>
-                      </>
-                    )}
-                    {point.score !== undefined && (
-                      <p>Score: {Math.round(point.score * 100)}/100</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 };

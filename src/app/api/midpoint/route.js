@@ -99,8 +99,7 @@ export async function GET(request) {
           method: 'geographic',
           details: {
             description: 'Direct geographic midpoint using spherical coordinates'
-          },
-          allMidpoints: [midpoint] // Include only the one midpoint
+          }
         }
       });
     }
@@ -116,8 +115,7 @@ export async function GET(request) {
           method: 'simple',
           details: {
             description: 'Simple arithmetic midpoint calculation'
-          },
-          allMidpoints: [midpoint] // Include only the one midpoint
+          }
         }
       });
     }
@@ -163,11 +161,8 @@ export async function GET(request) {
           details: {
             restaurantCount: bestMidpoint.restaurants,
             description: 'Midpoint optimized for restaurant availability'
-          },
-          allMidpoints: potentialMidpoints.map((point, i) => ({
-            ...point,
-            restaurantCount: restaurantDensities[i].restaurants
-          }))
+          }
+          // Removed detailed allMidpoints data
         }
       });
     }
@@ -226,11 +221,7 @@ export async function GET(request) {
             details: {
               restaurantCount: bestMidpoint.restaurants,
               description: 'Midpoint based on restaurant availability (time calculation failed)'
-            },
-            allMidpoints: potentialMidpoints.map((point, i) => ({
-              ...point,
-              restaurantCount: restaurantDensities[i].restaurants
-            }))
+            }
           }
         });
       }
@@ -275,14 +266,7 @@ export async function GET(request) {
         data: {
           midpoint: bestMidpoint.point,
           method: 'optimized',
-          details: bestMidpoint.details,
-          allMidpoints: scoredMidpoints.map(m => ({
-            ...m.point,
-            score: m.score,
-            travelTime1: m.details.travelTime1,
-            travelTime2: m.details.travelTime2,
-            restaurantCount: m.details.restaurantCount
-          }))
+          details: bestMidpoint.details
         }
       });
     }
@@ -297,8 +281,7 @@ export async function GET(request) {
         method: 'simple_fallback',
         details: {
           description: 'Simple midpoint calculation (fallback)'
-        },
-        allMidpoints: [simpleMidpoint]
+        }
       }
     });
     
@@ -319,8 +302,7 @@ export async function GET(request) {
         details: {
           error: error.message,
           description: 'Simple midpoint calculation due to error'
-        },
-        allMidpoints: [simpleMidpoint]
+        }
       }
     });
   }

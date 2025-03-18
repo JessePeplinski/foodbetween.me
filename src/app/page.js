@@ -23,7 +23,7 @@ export default function Home() {
   const [searchRadius, setSearchRadius] = useState(1609); // Default to 1 mile (1609 meters)
   const [midpointStrategy, setMidpointStrategy] = useState('optimized');
   const [locations, setLocations] = useState(null); // Store geocoded locations
-  const [allMidpoints, setAllMidpoints] = useState([]);
+  // Removed allMidpoints state
   
   const handleAddressChange = (key, value) => {
     setAddresses(prev => ({
@@ -96,7 +96,6 @@ export default function Home() {
       const mid = midpointData.data.midpoint;
       setMidpoint(mid);
       setMidpointInfo(midpointData.data);
-      setAllMidpoints(midpointData.data.allMidpoints || []);
       
       // Set markers for the map
       const initialMarkers = [
@@ -195,23 +194,7 @@ export default function Home() {
     }
   };
   
-  const handleMidpointSelect = (newMidpoint) => {
-    if (!newMidpoint || !locations) return;
-    
-    setMidpoint(newMidpoint);
-    
-    // Update markers
-    const initialMarkers = [
-      { position: locations.location1, label: 'A', title: 'Address 1' },
-      { position: locations.location2, label: 'B', title: 'Address 2' },
-      { position: newMidpoint, label: 'M', title: 'Selected Meeting Point' },
-    ];
-    
-    setMarkers(initialMarkers);
-    
-    // Search for places at the new midpoint
-    searchPlaces(newMidpoint.lat, newMidpoint.lng, searchRadius, initialMarkers);
-  };
+  // Removed handleMidpointSelect function as it's no longer needed
   
   return (
     <div className="container mx-auto px-4 py-8">
@@ -268,9 +251,7 @@ export default function Home() {
               searchRadius={searchRadius}
               onRadiusChange={handleRadiusChange}
               onStrategyChange={handleStrategyChange}
-              onMidpointSelect={handleMidpointSelect}
               selectedStrategy={midpointStrategy}
-              allMidpoints={allMidpoints}
             />
           </div>
         </div>
