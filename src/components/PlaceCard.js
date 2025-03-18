@@ -71,7 +71,9 @@ const PlaceCard = ({ place, index }) => {
           {place.formatted_phone_number && (
             <div className="flex items-center">
               <Phone className="h-4 w-4 text-gray-500 mr-1" />
-              <p>{place.formatted_phone_number}</p>
+              <a href={`tel:${place.formatted_phone_number.replace(/\D/g, '')}`} className="text-blue-600 hover:underline">
+                {place.formatted_phone_number}
+              </a>
             </div>
           )}
         </div>
