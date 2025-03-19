@@ -6,8 +6,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import AddressInput from '@/components/AddressInput';
 import PoiInput from '@/components/PoiInput'; // Import the new POI Input component
 import Map from '@/components/Map';
+import MapSkeleton from '@/components/MapSkeleton'; // Import the MapSkeleton component
 import PlaceCard from '@/components/PlaceCard';
 import MidpointOptions from '@/components/MidpointOptions';
+import MidpointOptionsSkeleton from '@/components/MidpointOptionsSkeleton'; // Import the MidpointOptionsSkeleton
+import PlaceCardsSkeleton from '@/components/PlaceCardsSkeleton'; // Import the PlaceCardsSkeleton
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 export default function Home() {
@@ -25,6 +28,10 @@ export default function Home() {
   const [searchRadius, setSearchRadius] = useState(1609); // Default to 1 mile (1609 meters)
   const [midpointStrategy, setMidpointStrategy] = useState('optimized');
   const [locations, setLocations] = useState(null); // Store geocoded locations
+  const [mapLoading, setMapLoading] = useState(false); // Map loading state
+  const [optionsLoading, setOptionsLoading] = useState(false); // Options loading state
+  const [placesLoading, setPlacesLoading] = useState(false); // Places loading state
+  const [searchStarted, setSearchStarted] = useState(false); // Track if search has been initiated
   
   const handleAddressChange = (key, value) => {
     setAddresses(prev => ({
@@ -54,9 +61,16 @@ export default function Home() {
       return;
     }
     
+    // Set all loading states to true
     setLoading(true);
-    setPlaces([]); // Clear existing places
-    setNoResultsMessage(''); // Clear any previous messages
+    setMapLoading(true);
+    setOptionsLoading(true);
+    setPlacesLoading(true);
+    setSearchStarted(true); // Indicate search has started to show skeletons
+    
+    // Clear existing data
+    setPlaces([]);
+    setNoResultsMessage('');
     setMidpointInfo(null);
     
     try {
@@ -88,11 +102,19 @@ export default function Home() {
     } catch (error) {
       console.error('Error:', error);
       alert(`An error occurred: ${error.message}`);
+      // Reset all loading states on error
       setLoading(false);
+      setMapLoading(false);
+      setOptionsLoading(false);
+      setPlacesLoading(false);
     }
   };
   
   const calculateMidpoint = async (lat1, lng1, lat2, lng2, strategy) => {
+    // Set loading states for midpoint calculation
+    setMapLoading(true);
+    setOptionsLoading(true);
+    
     try {
       const midpointRes = await fetch(
         `/api/midpoint?lat1=${lat1}&lng1=${lng1}` +
@@ -113,6 +135,9 @@ export default function Home() {
       setMidpoint(mid);
       setMidpointInfo(midpointData.data);
       
+      // Options loading can end now that we have midpoint data
+      setOptionsLoading(false);
+      
       // Set markers for the map
       const initialMarkers = [
         { position: { lat: lat1, lng: lng1 }, label: 'A', title: 'Address 1' },
@@ -126,13 +151,20 @@ export default function Home() {
     } catch (error) {
       console.error('Midpoint calculation error:', error);
       alert(`Failed to calculate midpoint: ${error.message}`);
-    } finally {
+      
+      // Reset loading states on error
+      setMapLoading(false);
+      setOptionsLoading(false);
+      setPlacesLoading(false);
       setLoading(false);
     }
   };
   
   const searchPlaces = async (lat, lng, radius, initialMarkers = markers) => {
+    // Set loading states for places search
     setLoading(true);
+    setPlacesLoading(true); // Ensure places are in loading state
+    
     try {
       // Find nearby places with specified POI type
       const placesRes = await fetch(`/api/places?lat=${lat}&lng=${lng}&radius=${radius}&type=${poiType}`);
@@ -190,13 +222,19 @@ export default function Home() {
       console.error('Error:', error);
       alert(`An error occurred searching for places: ${error.message}`);
     } finally {
+      // End all loading states after places are loaded
       setLoading(false);
+      setMapLoading(false);
+      setPlacesLoading(false);
     }
   };
   
   const handleRadiusChange = (newRadius) => {
     setSearchRadius(newRadius);
     if (midpoint) {
+      // Start loading states when radius changes
+      setMapLoading(true);
+      setPlacesLoading(true);
       searchPlaces(midpoint.lat, midpoint.lng, newRadius);
     }
   };
@@ -206,6 +244,11 @@ export default function Home() {
     
     // If we already have locations, recalculate midpoint with new strategy
     if (locations) {
+      // Start all loading states when strategy changes
+      setMapLoading(true);
+      setOptionsLoading(true);
+      setPlacesLoading(true);
+      
       calculateMidpoint(
         locations.location1.lat,
         locations.location1.lng,
@@ -266,33 +309,42 @@ export default function Home() {
         </Button>
       </div>
       
-      {midpoint && (
+      {/* Map Section with Skeleton Loading State */}
+      {(searchStarted || midpoint) && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Map Column */}
+          {/* Map Column with Conditional Rendering */}
           <div className="md:col-span-2">
-            <Card>
-              <CardContent className="p-0">
-                <Map 
-                  center={midpoint} 
-                  markers={markers}
-                  zoom={13}
-                  height="400px"
-                  searchRadius={searchRadius} // Add the searchRadius prop
-                />
-              </CardContent>
-            </Card>
+            {mapLoading ? (
+              <MapSkeleton height="400px" />
+            ) : midpoint ? (
+              <Card>
+                <CardContent className="p-0">
+                  <Map 
+                    center={midpoint} 
+                    markers={markers}
+                    zoom={13}
+                    height="400px"
+                    searchRadius={searchRadius}
+                  />
+                </CardContent>
+              </Card>
+            ) : null}
           </div>
           
-          {/* Options Column */}
+          {/* Options Column with Skeleton */}
           <div className="md:col-span-1">
-            <MidpointOptions 
-              midpointInfo={midpointInfo}
-              searchRadius={searchRadius}
-              poiType={poiType}
-              onRadiusChange={handleRadiusChange}
-              onStrategyChange={handleStrategyChange}
-              selectedStrategy={midpointStrategy}
-            />
+            {optionsLoading ? (
+              <MidpointOptionsSkeleton />
+            ) : midpointInfo ? (
+              <MidpointOptions 
+                midpointInfo={midpointInfo}
+                searchRadius={searchRadius}
+                poiType={poiType}
+                onRadiusChange={handleRadiusChange}
+                onStrategyChange={handleStrategyChange}
+                selectedStrategy={midpointStrategy}
+              />
+            ) : null}
           </div>
         </div>
       )}
@@ -304,15 +356,22 @@ export default function Home() {
         </div>
       )}
       
-      {places.length > 0 && (
-        <div className="results">
-          <h2 className="text-2xl font-semibold mb-4">Top {formatPoiType(poiType)} Near Meeting Point</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {places.map((place, index) => (
-              <PlaceCard key={place.place_id} place={place} index={index + 1} />
-            ))}
-          </div>
-        </div>
+      {/* Places Section with Skeleton Loading */}
+      {searchStarted && (
+        <>
+          {placesLoading ? (
+            <PlaceCardsSkeleton />
+          ) : places.length > 0 ? (
+            <div className="results">
+              <h2 className="text-2xl font-semibold mb-4">Top {formatPoiType(poiType)} Near Meeting Point</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {places.map((place, index) => (
+                  <PlaceCard key={place.place_id} place={place} index={index + 1} />
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </>
       )}
     </div>
   );
