@@ -1,8 +1,13 @@
 // src/app/api/geocode/route.js
 import { NextResponse } from 'next/server';
 import { mockApi, shouldUseMock } from '@/lib/mockApi';
+import { rateLimit } from '@/lib/rateLimiter';
 
 export async function GET(request) {
+  // Apply rate limiting (30 requests per minute for geocoding)
+  const rateLimitResponse = rateLimit(request, { maxRequests: 30 });
+  if (rateLimitResponse) return rateLimitResponse;
+  
   const { searchParams } = new URL(request.url);
   const address = searchParams.get('address');
   

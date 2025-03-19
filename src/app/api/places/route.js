@@ -1,8 +1,13 @@
 // src/app/api/places/route.js
 import { NextResponse } from 'next/server';
 import { mockApi, shouldUseMock } from '@/lib/mockApi';
+import { rateLimit } from '@/lib/rateLimiter';
 
 export async function GET(request) {
+  // Apply rate limiting (20 requests per minute for places search)
+  const rateLimitResponse = rateLimit(request, { maxRequests: 20 });
+  if (rateLimitResponse) return rateLimitResponse;
+
   const { searchParams } = new URL(request.url);
   const lat = searchParams.get('lat');
   const lng = searchParams.get('lng');

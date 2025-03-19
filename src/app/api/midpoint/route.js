@@ -1,6 +1,7 @@
 // src/app/api/midpoint/route.js
 import { NextResponse } from 'next/server';
 import { mockApi, shouldUseMock } from '@/lib/mockApi';
+import { rateLimit } from '@/lib/rateLimiter';
 
 // Helper function to convert degrees to radians
 function toRadians(degrees) {
@@ -74,6 +75,10 @@ function generatePotentialMidpoints(lat1, lng1, lat2, lng2, numPoints = 5) {
 }
 
 export async function GET(request) {
+  // Apply rate limiting (15 requests per minute for midpoint calculations - more resource intensive)
+  const rateLimitResponse = rateLimit(request, { maxRequests: 15 });
+  if (rateLimitResponse) return rateLimitResponse;
+
   const { searchParams } = new URL(request.url);
   const lat1 = parseFloat(searchParams.get('lat1'));
   const lng1 = parseFloat(searchParams.get('lng1'));
