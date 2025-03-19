@@ -5,10 +5,11 @@ import { useEffect, useRef } from 'react';
 import { setupMockGoogleMaps } from '@/lib/mockMapComponents';
 import { shouldUseMock } from '@/lib/mockApi';
 
-const Map = ({ center, markers = [], zoom = 12, height = '400px' }) => {
+const Map = ({ center, markers = [], zoom = 12, height = '400px', searchRadius }) => {
   const mapRef = useRef(null);
   const googleMapRef = useRef(null);
   const markersRef = useRef([]);
+  const circleRef = useRef(null);
   
   useEffect(() => {
     // Determine if we should use mock API
@@ -43,8 +44,11 @@ const Map = ({ center, markers = [], zoom = 12, height = '400px' }) => {
   useEffect(() => {
     if (googleMapRef.current && center) {
       googleMapRef.current.setCenter(center);
+      
+      // Update the circle when center changes
+      updateCircle();
     }
-  }, [center]);
+  }, [center, searchRadius]);
   
   useEffect(() => {
     if (!googleMapRef.current || !markers.length) return;
@@ -64,7 +68,38 @@ const Map = ({ center, markers = [], zoom = 12, height = '400px' }) => {
       
       markersRef.current.push(marker);
     });
-  }, [markers]);
+    
+    // Update the circle when markers change
+    updateCircle();
+  }, [markers, searchRadius]);
+  
+  const updateCircle = () => {
+    // Remove previous circle if it exists
+    if (circleRef.current) {
+      circleRef.current.setMap(null);
+      circleRef.current = null;
+    }
+    
+    // If we have a center point and search radius, draw the circle
+    if (googleMapRef.current && center && searchRadius) {
+      // Find the midpoint marker (usually labeled 'M')
+      const midpointMarker = markers.find(marker => marker.label === 'M');
+      
+      if (midpointMarker) {
+        // Create a circle at the midpoint position with the search radius
+        circleRef.current = new window.google.maps.Circle({
+          map: googleMapRef.current,
+          center: midpointMarker.position,
+          radius: parseInt(searchRadius),
+          fillColor: '#4285F4',
+          fillOpacity: 0.1,
+          strokeColor: '#4285F4', // Google Maps blue
+          strokeOpacity: 0.8,
+          strokeWeight: 2,
+        });
+      }
+    }
+  };
   
   const initMap = () => {
     if (!mapRef.current) return;
@@ -73,6 +108,9 @@ const Map = ({ center, markers = [], zoom = 12, height = '400px' }) => {
       center: center || { lat: 40.7128, lng: -74.0060 }, // Default to NYC
       zoom,
     });
+    
+    // Initialize the circle if search radius is provided
+    updateCircle();
   };
   
   return (

@@ -277,6 +277,7 @@ export default function Home() {
                   markers={markers}
                   zoom={13}
                   height="400px"
+                  searchRadius={searchRadius} // Add the searchRadius prop
                 />
               </CardContent>
             </Card>
@@ -295,7 +296,7 @@ export default function Home() {
           </div>
         </div>
       )}
-      
+            
       {noResultsMessage && (
         <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-md flex items-center gap-3">
           <AlertTriangle className="h-5 w-5 text-amber-500" />
