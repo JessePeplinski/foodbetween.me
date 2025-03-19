@@ -32,6 +32,20 @@ const MidpointOptionsSkeleton = () => {
           <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded"></div>
         </div>
       </div>
+      
+      {/* Number of Results Section */}
+      <div className="mt-6">
+        <div className="flex justify-between items-center mb-2">
+          <div className="h-5 w-1/3 bg-gray-300 dark:bg-gray-700 rounded"></div>
+          <div className="h-5 w-1/3 bg-gray-200 dark:bg-gray-800 rounded"></div>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded"></div>
+          <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded"></div>
+          <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded"></div>
+          <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded"></div>
+        </div>
+      </div>
     </div>
   );
 };

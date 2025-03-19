@@ -27,6 +27,7 @@ export default function Home() {
   const [midpointInfo, setMidpointInfo] = useState(null);
   const [searchRadius, setSearchRadius] = useState(1609); // Default to 1 mile (1609 meters)
   const [midpointStrategy, setMidpointStrategy] = useState('optimized');
+  const [resultsLimit, setResultsLimit] = useState(3); // Default to 3 results
   const [locations, setLocations] = useState(null); // Store geocoded locations
   const [mapLoading, setMapLoading] = useState(false); // Map loading state
   const [optionsLoading, setOptionsLoading] = useState(false); // Options loading state
@@ -52,6 +53,23 @@ export default function Home() {
         locations.location2.lng,
         midpointStrategy
       );
+    }
+  };
+  
+  const handleResultsLimitChange = (value) => {
+    // Set the new limit first
+    setResultsLimit(value);
+    
+    // If we already have midpoint, update the results with the new limit
+    if (midpoint) {
+      // Start places loading when results limit changes
+      setPlacesLoading(true);
+      
+      // Use a small timeout to ensure state is updated before the API call
+      setTimeout(() => {
+        // Make sure we're passing the new value directly rather than relying on state
+        searchPlaces(midpoint.lat, midpoint.lng, searchRadius, markers.slice(0, 3), value);
+      }, 50);
     }
   };
   
@@ -160,14 +178,17 @@ export default function Home() {
     }
   };
   
-  const searchPlaces = async (lat, lng, radius, initialMarkers = markers) => {
+  const searchPlaces = async (lat, lng, radius, initialMarkers = markers, limit = null) => {
     // Set loading states for places search
     setLoading(true);
     setPlacesLoading(true); // Ensure places are in loading state
     
+    // Use the provided limit or fall back to the state value
+    const currentLimit = limit !== null ? limit : resultsLimit;
+    
     try {
-      // Find nearby places with specified POI type
-      const placesRes = await fetch(`/api/places?lat=${lat}&lng=${lng}&radius=${radius}&type=${poiType}`);
+      // Find nearby places with specified POI type and limit
+      const placesRes = await fetch(`/api/places?lat=${lat}&lng=${lng}&radius=${radius}&type=${poiType}&limit=${currentLimit}`);
       
       if (!placesRes.ok) {
         throw new Error(`Places API error: ${placesRes.status}`);
@@ -177,10 +198,12 @@ export default function Home() {
       
       if (placesData.success) {
         if (Array.isArray(placesData.data) && placesData.data.length > 0) {
+          // Store the actual returned places
           setPlaces(placesData.data);
           setNoResultsMessage('');
           
-          // Add place markers for valid places only
+          // Reset markers to just initial markers (A, B, M)
+          // Then add new place markers for valid places only
           const placeMarkers = placesData.data
             .filter(place => place && place.geometry && place.geometry.location)
             .map((place, index) => ({
@@ -190,7 +213,11 @@ export default function Home() {
             }));
           
           if (placeMarkers.length > 0) {
-            setMarkers([...initialMarkers, ...placeMarkers]);
+            // Use only the base markers (typically A, B, M) and add the new place markers
+            const baseMarkers = initialMarkers.filter(marker => 
+              ['A', 'B', 'M'].includes(marker.label)
+            );
+            setMarkers([...baseMarkers, ...placeMarkers]);
           }
         } else {
           // No places found but API call was successful
@@ -340,8 +367,10 @@ export default function Home() {
                 midpointInfo={midpointInfo}
                 searchRadius={searchRadius}
                 poiType={poiType}
+                resultsLimit={resultsLimit}
                 onRadiusChange={handleRadiusChange}
                 onStrategyChange={handleStrategyChange}
+                onResultsLimitChange={handleResultsLimitChange}
                 selectedStrategy={midpointStrategy}
               />
             ) : null}
@@ -363,7 +392,7 @@ export default function Home() {
             <PlaceCardsSkeleton />
           ) : places.length > 0 ? (
             <div className="results">
-              <h2 className="text-2xl font-semibold mb-4">Top {formatPoiType(poiType)} Near Meeting Point</h2>
+              <h2 className="text-2xl font-semibold mb-4">Top {places.length} {formatPoiType(poiType)} Near Meeting Point</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {places.map((place, index) => (
                   <PlaceCard key={place.place_id} place={place} index={index + 1} />

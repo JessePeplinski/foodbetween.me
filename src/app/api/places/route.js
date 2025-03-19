@@ -13,6 +13,7 @@ export async function GET(request) {
   const lng = searchParams.get('lng');
   const radius = searchParams.get('radius') || '1000'; // Default to 1000m but allow custom radius
   const poiType = searchParams.get('type') || 'restaurant'; // Default to restaurant if not specified
+  const limit = parseInt(searchParams.get('limit')) || 3; // Default to 3 results
   
   if (!lat || !lng) {
     return NextResponse.json(
@@ -24,8 +25,12 @@ export async function GET(request) {
   try {
     // Use mock API if we're in development/testing mode
     if (shouldUseMock()) {
-      console.log('[MOCK API] Using mock places API for:', { lat, lng, radius, poiType });
+      console.log('[MOCK API] Using mock places API for:', { lat, lng, radius, poiType, limit });
       const mockResponse = await mockApi.findPlaces(lat, lng, radius, poiType);
+      // Apply limit to mock data
+      if (mockResponse.success && Array.isArray(mockResponse.data)) {
+        mockResponse.data = mockResponse.data.slice(0, limit);
+      }
       return NextResponse.json(mockResponse);
     }
     
@@ -61,8 +66,8 @@ export async function GET(request) {
       });
     }
     
-    // Get top 3 places
-    const topPlaces = data.results.slice(0, 3);
+    // Get top places based on limit parameter
+    const topPlaces = data.results.slice(0, limit);
     
     // Get additional details for each place
     const detailedPlaces = await Promise.all(
@@ -95,6 +100,7 @@ export async function GET(request) {
       metadata: {
         searchRadius: parseInt(radius),
         poiType: poiType,
+        resultsLimit: limit,
         originalLocation: { lat, lng }
       }
     });

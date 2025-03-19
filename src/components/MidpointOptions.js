@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Info, Clock, MapPin, Repeat } from 'lucide-react';
+import { Info, Clock, MapPin, Repeat, ListFilter } from 'lucide-react';
 
 // Helper function to format distance based on unit type
 const formatDistance = (distanceInMeters, unitType) => {
@@ -25,7 +25,9 @@ const MidpointOptions = ({
   poiType = 'restaurant', // Default to restaurant
   onRadiusChange,
   onStrategyChange,
-  selectedStrategy = 'optimized'
+  selectedStrategy = 'optimized',
+  resultsLimit = 3, // Default to 3 results
+  onResultsLimitChange
 }) => {
   const [unitType, setUnitType] = useState('miles'); // Default to miles
   
@@ -68,6 +70,14 @@ const MidpointOptions = ({
         { value: 3000, label: '3 km' },
         { value: 5000, label: '5 km' }
       ];
+      
+  // Results limit options
+  const resultsOptions = [
+    { value: 3, label: '3' },
+    { value: 6, label: '6' },
+    { value: 9, label: '9' },
+    { value: 12, label: '12' }
+  ];
       
   // Toggle between miles and kilometers
   const toggleUnitType = () => {
@@ -173,6 +183,29 @@ const MidpointOptions = ({
               variant={searchRadius === option.value ? 'default' : 'outline'}
               size="sm"
               onClick={() => onRadiusChange(option.value)}
+            >
+              {option.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+      
+      {/* New Results Limit Selection */}
+      <div>
+        <div className="flex justify-between items-center mb-2">
+          <Label>Number of Results</Label>
+          <div className="text-xs text-gray-500 flex items-center">
+            <ListFilter className="h-3 w-3 mr-1" />
+            Showing top results
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {resultsOptions.map(option => (
+            <Button
+              key={option.value}
+              variant={resultsLimit === option.value ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onResultsLimitChange(option.value)}
             >
               {option.label}
             </Button>
