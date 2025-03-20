@@ -1,83 +1,20 @@
 // src/components/RateLimitIndicator.js
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Activity, AlertCircle } from 'lucide-react';
+import { useRateLimits } from '@/context/RateLimitContext';
 
 const RateLimitIndicator = () => {
-  const [limits, setLimits] = useState({
-    geocode: null,
-    places: null,
-    midpoint: null
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [expanded, setExpanded] = useState(false);
-
-  // Function to fetch rate limits from API endpoints
-  const fetchRateLimits = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      // Make ping requests to each API endpoint to get rate limit headers
-      const endpoints = [
-        { name: 'geocode', url: '/api/geocode?ping=true' },
-        { name: 'places', url: '/api/places?ping=true' },
-        { name: 'midpoint', url: '/api/midpoint?ping=true' }
-      ];
-      
-      const results = await Promise.all(
-        endpoints.map(async (endpoint) => {
-          try {
-            const response = await fetch(endpoint.url);
-            
-            return {
-              name: endpoint.name,
-              limit: response.headers.get('X-RateLimit-Limit'),
-              remaining: response.headers.get('X-RateLimit-Remaining'),
-              reset: response.headers.get('X-RateLimit-Reset')
-            };
-          } catch (err) {
-            // If an individual endpoint fails, just return null for that endpoint
-            console.error(`Error fetching rate limit for ${endpoint.name}:`, err);
-            return { name: endpoint.name, error: err.message };
-          }
-        })
-      );
-      
-      // Process results into a more structured format
-      const newLimits = results.reduce((acc, result) => {
-        if (!result.error) {
-          acc[result.name] = {
-            limit: parseInt(result.limit || '0'),
-            remaining: parseInt(result.remaining || '0'),
-            reset: result.reset ? new Date(parseInt(result.reset) * 1000) : null
-          };
-        }
-        return acc;
-      }, {});
-      
-      setLimits(newLimits);
-    } catch (err) {
-      console.error('Error fetching rate limits:', err);
-      setError('Failed to load rate limits');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { 
+    limits, 
+    loading, 
+    error, 
+    fetchRateLimits,
+    hasReachedRateLimit
+  } = useRateLimits();
   
-  // Fetch rate limits on first render and every 30 seconds
-  useEffect(() => {
-    // Initial fetch
-    fetchRateLimits();
-    
-    // Set up interval for periodic updates
-    const intervalId = setInterval(fetchRateLimits, 30000);
-    
-    // Clean up on unmount
-    return () => clearInterval(intervalId);
-  }, []);
+  const [expanded, setExpanded] = useState(false);
   
   // Helper function to format time until reset
   const formatTimeRemaining = (resetTime) => {
@@ -97,6 +34,9 @@ const RateLimitIndicator = () => {
   
   // Calculate overall usage status
   const getOverallStatus = () => {
+    // If rate limit is reached, return 'critical'
+    if (hasReachedRateLimit()) return 'critical';
+    
     // If any endpoint is near limit (< 20% remaining), show warning
     const endpoints = Object.values(limits).filter(l => l);
     
@@ -114,6 +54,7 @@ const RateLimitIndicator = () => {
   const statusColor = {
     good: 'text-green-600',
     warning: 'text-amber-500',
+    critical: 'text-red-600',
     unknown: 'text-gray-500'
   };
   
@@ -128,7 +69,9 @@ const RateLimitIndicator = () => {
         <Activity 
           className={`h-4 w-4 ${loading ? 'animate-pulse text-gray-400' : statusColor[getOverallStatus()]}`} 
         />
-        <span className="text-xs font-medium">API Limits</span>
+        <span className={`text-xs font-medium ${hasReachedRateLimit() ? 'text-red-600' : ''}`}>
+          {hasReachedRateLimit() ? 'Rate Limited' : 'API Limits'}
+        </span>
       </button>
       
       {/* Expanded view - shows detailed rate limit info */}
@@ -143,6 +86,13 @@ const RateLimitIndicator = () => {
               Refresh
             </button>
           </div>
+          
+          {hasReachedRateLimit() && (
+            <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">
+              <AlertCircle className="inline-block h-4 w-4 mr-1 mb-1" />
+              Rate limit reached! Please wait for limits to reset.
+            </div>
+          )}
           
           {loading && <p className="text-sm text-gray-500">Loading limits...</p>}
           
@@ -160,6 +110,7 @@ const RateLimitIndicator = () => {
                 
                 const usagePercentage = data.limit ? Math.max(0, 100 - (data.remaining / data.limit * 100)) : 0;
                 const getBarColor = () => {
+                  if (usagePercentage >= 100) return 'bg-red-600';
                   if (usagePercentage > 80) return 'bg-red-500';
                   if (usagePercentage > 60) return 'bg-amber-500';
                   return 'bg-green-500';
@@ -169,7 +120,7 @@ const RateLimitIndicator = () => {
                   <div key={name} className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-medium capitalize">{name}</span>
-                      <span className="text-gray-500">
+                      <span className={`${data.remaining === 0 ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
                         {data.remaining} / {data.limit} remaining
                       </span>
                     </div>

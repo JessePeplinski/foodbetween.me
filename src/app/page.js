@@ -1,17 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import AddressInput from '@/components/AddressInput';
-import PoiInput from '@/components/PoiInput'; // Import the new POI Input component
+import PoiInput from '@/components/PoiInput';
 import Map from '@/components/Map';
-import MapSkeleton from '@/components/MapSkeleton'; // Import the MapSkeleton component
+import MapSkeleton from '@/components/MapSkeleton';
 import PlaceCard from '@/components/PlaceCard';
 import MidpointOptions from '@/components/MidpointOptions';
-import MidpointOptionsSkeleton from '@/components/MidpointOptionsSkeleton'; // Import the MidpointOptionsSkeleton
-import PlaceCardsSkeleton from '@/components/PlaceCardsSkeleton'; // Import the PlaceCardsSkeleton
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import MidpointOptionsSkeleton from '@/components/MidpointOptionsSkeleton';
+import PlaceCardsSkeleton from '@/components/PlaceCardsSkeleton';
+import { AlertTriangle, RefreshCw, AlertCircle } from 'lucide-react';
+import { useRateLimits } from '@/context/RateLimitContext';
 
 export default function Home() {
   const [addresses, setAddresses] = useState({
@@ -33,6 +34,23 @@ export default function Home() {
   const [optionsLoading, setOptionsLoading] = useState(false); // Options loading state
   const [placesLoading, setPlacesLoading] = useState(false); // Places loading state
   const [searchStarted, setSearchStarted] = useState(false); // Track if search has been initiated
+  const [rateLimitError, setRateLimitError] = useState(null); // Store rate limit error message
+  
+  // Get rate limit info from context
+  const { 
+    hasReachedRateLimit, 
+    getLowestRemainingEndpoint, 
+    getTimeUntilReset,
+    fetchRateLimits
+  } = useRateLimits();
+  
+  // Check rate limits on component mount and when search button is clicked
+  useEffect(() => {
+    // Clear rate limit error when limits are refreshed and no longer hitting the limit
+    if (!hasReachedRateLimit() && rateLimitError) {
+      setRateLimitError(null);
+    }
+  }, [hasReachedRateLimit, rateLimitError]);
   
   const handleAddressChange = (key, value) => {
     setAddresses(prev => ({
@@ -74,6 +92,20 @@ export default function Home() {
   };
   
   const handleSearch = async () => {
+    // Clear any previous rate limit error
+    setRateLimitError(null);
+    
+    // Check if we've hit rate limits before making API calls
+    if (hasReachedRateLimit()) {
+      const lowestEndpoint = getLowestRemainingEndpoint();
+      const resetTime = lowestEndpoint ? getTimeUntilReset(lowestEndpoint) : 'a few minutes';
+      
+      setRateLimitError(
+        `Rate limit reached. Please wait ${resetTime} before trying again.`
+      );
+      return;
+    }
+    
     if (!addresses.address1 || !addresses.address2) {
       alert('Please enter both addresses');
       return;
@@ -95,6 +127,11 @@ export default function Home() {
       // Geocode addresses
       const geocodeRes1 = await fetch(`/api/geocode?address=${encodeURIComponent(addresses.address1)}`);
       const geocodeRes2 = await fetch(`/api/geocode?address=${encodeURIComponent(addresses.address2)}`);
+      
+      // Check for rate limit responses
+      if (geocodeRes1.status === 429 || geocodeRes2.status === 429) {
+        throw new Error('RATE_LIMIT_EXCEEDED');
+      }
       
       const location1 = await geocodeRes1.json();
       const location2 = await geocodeRes2.json();
@@ -119,7 +156,22 @@ export default function Home() {
       );
     } catch (error) {
       console.error('Error:', error);
-      alert(`An error occurred: ${error.message}`);
+      
+      // Handle rate limit error specifically
+      if (error.message === 'RATE_LIMIT_EXCEEDED') {
+        // Refresh the rate limits to get the latest data
+        await fetchRateLimits();
+        
+        const lowestEndpoint = getLowestRemainingEndpoint();
+        const resetTime = lowestEndpoint ? getTimeUntilReset(lowestEndpoint) : 'a few minutes';
+        
+        setRateLimitError(
+          `Rate limit reached. Please wait ${resetTime} before trying again.`
+        );
+      } else {
+        alert(`An error occurred: ${error.message}`);
+      }
+      
       // Reset all loading states on error
       setLoading(false);
       setMapLoading(false);
@@ -138,6 +190,11 @@ export default function Home() {
         `/api/midpoint?lat1=${lat1}&lng1=${lng1}` +
         `&lat2=${lat2}&lng2=${lng2}&strategy=${strategy}&poiType=${poiType}`
       );
+      
+      // Check for rate limit response
+      if (midpointRes.status === 429) {
+        throw new Error('RATE_LIMIT_EXCEEDED');
+      }
       
       if (!midpointRes.ok) {
         throw new Error(`Midpoint calculation error: ${midpointRes.status}`);
@@ -168,7 +225,21 @@ export default function Home() {
       await searchPlaces(mid.lat, mid.lng, searchRadius, initialMarkers);
     } catch (error) {
       console.error('Midpoint calculation error:', error);
-      alert(`Failed to calculate midpoint: ${error.message}`);
+      
+      // Handle rate limit error specifically
+      if (error.message === 'RATE_LIMIT_EXCEEDED') {
+        // Refresh the rate limits to get the latest data
+        await fetchRateLimits();
+        
+        const lowestEndpoint = getLowestRemainingEndpoint();
+        const resetTime = lowestEndpoint ? getTimeUntilReset(lowestEndpoint) : 'a few minutes';
+        
+        setRateLimitError(
+          `Rate limit reached. Please wait ${resetTime} before trying again.`
+        );
+      } else {
+        alert(`Failed to calculate midpoint: ${error.message}`);
+      }
       
       // Reset loading states on error
       setMapLoading(false);
@@ -189,6 +260,11 @@ export default function Home() {
     try {
       // Find nearby places with specified POI type and limit
       const placesRes = await fetch(`/api/places?lat=${lat}&lng=${lng}&radius=${radius}&type=${poiType}&limit=${currentLimit}`);
+      
+      // Check for rate limit response
+      if (placesRes.status === 429) {
+        throw new Error('RATE_LIMIT_EXCEEDED');
+      }
       
       if (!placesRes.ok) {
         throw new Error(`Places API error: ${placesRes.status}`);
@@ -247,7 +323,21 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error:', error);
-      alert(`An error occurred searching for places: ${error.message}`);
+      
+      // Handle rate limit error specifically
+      if (error.message === 'RATE_LIMIT_EXCEEDED') {
+        // Refresh the rate limits to get the latest data
+        await fetchRateLimits();
+        
+        const lowestEndpoint = getLowestRemainingEndpoint();
+        const resetTime = lowestEndpoint ? getTimeUntilReset(lowestEndpoint) : 'a few minutes';
+        
+        setRateLimitError(
+          `Rate limit reached. Please wait ${resetTime} before trying again.`
+        );
+      } else {
+        alert(`An error occurred searching for places: ${error.message}`);
+      }
     } finally {
       // End all loading states after places are loaded
       setLoading(false);
@@ -299,6 +389,13 @@ export default function Home() {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-8 text-center">Find Places Between Addresses</h1>
       
+      {rateLimitError && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
+          <p className="text-red-700">{rateLimitError}</p>
+        </div>
+      )}
+      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <AddressInput 
           label="Address 1"
@@ -324,13 +421,18 @@ export default function Home() {
       <div className="flex justify-center mb-8">
         <Button 
           onClick={handleSearch}
-          disabled={loading}
+          disabled={loading || hasReachedRateLimit()}
           className="px-8"
         >
           {loading ? (
             <>
               <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
               Searching...
+            </>
+          ) : hasReachedRateLimit() ? (
+            <>
+              <AlertCircle className="h-4 w-4 mr-2" />
+              Rate Limited
             </>
           ) : 'Search'}
         </Button>
