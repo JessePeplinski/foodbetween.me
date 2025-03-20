@@ -38,6 +38,7 @@ export default function Home() {
   
   // Get rate limit info from context
   const { 
+    trackApiCall,
     hasReachedRateLimit, 
     getLowestRemainingEndpoint, 
     getTimeUntilReset,
@@ -128,6 +129,10 @@ export default function Home() {
       const geocodeRes1 = await fetch(`/api/geocode?address=${encodeURIComponent(addresses.address1)}`);
       const geocodeRes2 = await fetch(`/api/geocode?address=${encodeURIComponent(addresses.address2)}`);
       
+      // Track API calls - add these lines to track geocoding costs
+      trackApiCall('geocode');
+      trackApiCall('geocode');
+      
       // Check for rate limit responses
       if (geocodeRes1.status === 429 || geocodeRes2.status === 429) {
         throw new Error('RATE_LIMIT_EXCEEDED');
@@ -190,6 +195,9 @@ export default function Home() {
         `/api/midpoint?lat1=${lat1}&lng1=${lng1}` +
         `&lat2=${lat2}&lng2=${lng2}&strategy=${strategy}&poiType=${poiType}`
       );
+      
+      // Track API call - add this line to track midpoint API cost
+      trackApiCall('midpoint');
       
       // Check for rate limit response
       if (midpointRes.status === 429) {
@@ -260,6 +268,9 @@ export default function Home() {
     try {
       // Find nearby places with specified POI type and limit
       const placesRes = await fetch(`/api/places?lat=${lat}&lng=${lng}&radius=${radius}&type=${poiType}&limit=${currentLimit}`);
+      
+      // Track API call - add this line to track places API cost
+      trackApiCall('places');
       
       // Check for rate limit response
       if (placesRes.status === 429) {

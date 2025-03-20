@@ -105,6 +105,10 @@ export const RateLimitProvider = ({ children }) => {
       for (const [endpoint, data] of Object.entries(limitsData)) {
         if (data) {
           const prevLimit = limits[endpoint];
+          
+          // IMPORTANT: We're removing this API usage tracking from the rate limit checker
+          // This was causing phantom cost increases without actual API calls
+          /*
           const prevUsed = prevLimit ? prevLimit.used || 0 : 0;
           const currentUsed = data.used || 0;
           
@@ -113,12 +117,13 @@ export const RateLimitProvider = ({ children }) => {
             const newCalls = currentUsed - prevUsed;
             trackApiCall(endpoint, newCalls);
           }
+          */
           
           newLimits[endpoint] = {
             limit: data.limit || 0,
             remaining: data.remaining || 0,
             reset: data.reset ? new Date(data.reset * 1000) : null,
-            used: currentUsed,
+            used: data.used || 0,
             updatedAt: data.updatedAt || Date.now()
           };
         }
