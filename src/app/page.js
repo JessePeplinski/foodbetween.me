@@ -297,7 +297,7 @@ export default function Home() {
   
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8 text-center">Food Between Me</h1>
+      <h1 className="text-2xl font-bold mb-8 text-center">Find Places Between Addresses</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <AddressInput 

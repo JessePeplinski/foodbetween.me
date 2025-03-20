@@ -5,10 +5,16 @@ import { rateLimit } from '@/lib/rateLimiter';
 
 export async function GET(request) {
   // Apply rate limiting (20 requests per minute for places search)
-  const rateLimitResponse = rateLimit(request, { maxRequests: 20 });
-  if (rateLimitResponse) return rateLimitResponse;
+  const rateLimitResult = rateLimit(request, { maxRequests: 20 });
+  if (rateLimitResult.isRateLimited) return rateLimitResult;
 
   const { searchParams } = new URL(request.url);
+  
+  // Handle ping requests for rate limit checking
+  if (searchParams.get('ping') === 'true') {
+    return rateLimitResult.getResponse({ success: true, message: 'API is operational' });
+  }
+  
   const lat = searchParams.get('lat');
   const lng = searchParams.get('lng');
   const radius = searchParams.get('radius') || '1000'; // Default to 1000m but allow custom radius
@@ -16,9 +22,9 @@ export async function GET(request) {
   const limit = parseInt(searchParams.get('limit')) || 3; // Default to 3 results
   
   if (!lat || !lng) {
-    return NextResponse.json(
+    return rateLimitResult.getResponse(
       { success: false, error: 'Latitude and longitude are required' },
-      { status: 400 }
+      400
     );
   }
   
@@ -31,7 +37,7 @@ export async function GET(request) {
       if (mockResponse.success && Array.isArray(mockResponse.data)) {
         mockResponse.data = mockResponse.data.slice(0, limit);
       }
-      return NextResponse.json(mockResponse);
+      return rateLimitResult.getResponse(mockResponse);
     }
     
     // Otherwise use the real Google API
@@ -45,15 +51,15 @@ export async function GET(request) {
     // Check for real API errors, but treat ZERO_RESULTS as valid
     if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
       console.error('Nearby Search API error:', data.status, data.error_message);
-      return NextResponse.json(
+      return rateLimitResult.getResponse(
         { success: false, error: data.status, message: data.error_message || 'Google Places API error' },
-        { status: 400 }
+        400
       );
     }
     
     // If no results found, return empty array with metadata
     if (data.status === 'ZERO_RESULTS' || !data.results || data.results.length === 0) {
-      return NextResponse.json({
+      return rateLimitResult.getResponse({
         success: true,
         data: [],
         metadata: {
@@ -94,7 +100,7 @@ export async function GET(request) {
       })
     );
     
-    return NextResponse.json({
+    return rateLimitResult.getResponse({
       success: true,
       data: detailedPlaces,
       metadata: {
@@ -106,9 +112,9 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error('Places API error:', error);
-    return NextResponse.json(
+    return rateLimitResult.getResponse(
       { success: false, error: 'Server error', message: error.message },
-      { status: 500 }
+      500
     );
   }
 }

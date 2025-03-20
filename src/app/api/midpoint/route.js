@@ -76,10 +76,16 @@ function generatePotentialMidpoints(lat1, lng1, lat2, lng2, numPoints = 5) {
 
 export async function GET(request) {
   // Apply rate limiting (15 requests per minute for midpoint calculations - more resource intensive)
-  const rateLimitResponse = rateLimit(request, { maxRequests: 15 });
-  if (rateLimitResponse) return rateLimitResponse;
+  const rateLimitResult = rateLimit(request, { maxRequests: 15 });
+  if (rateLimitResult.isRateLimited) return rateLimitResult;
 
   const { searchParams } = new URL(request.url);
+  
+  // Handle ping requests for rate limit checking
+  if (searchParams.get('ping') === 'true') {
+    return rateLimitResult.getResponse({ success: true, message: 'API is operational' });
+  }
+  
   const lat1 = parseFloat(searchParams.get('lat1'));
   const lng1 = parseFloat(searchParams.get('lng1'));
   const lat2 = parseFloat(searchParams.get('lat2'));
@@ -88,9 +94,9 @@ export async function GET(request) {
   const poiType = searchParams.get('poiType') || 'restaurant'; // Default to restaurant
   
   if (isNaN(lat1) || isNaN(lng1) || isNaN(lat2) || isNaN(lng2)) {
-    return NextResponse.json(
+    return rateLimitResult.getResponse(
       { success: false, error: 'Valid coordinates for both locations are required' },
-      { status: 400 }
+      400
     );
   }
   
@@ -99,7 +105,7 @@ export async function GET(request) {
     if (shouldUseMock()) {
       console.log('[MOCK API] Using mock midpoint API for:', { lat1, lng1, lat2, lng2, strategy, poiType });
       const mockResponse = await mockApi.calculateMidpoint(lat1, lng1, lat2, lng2, strategy, poiType);
-      return NextResponse.json(mockResponse);
+      return rateLimitResult.getResponse(mockResponse);
     }
     
     // Rest of the original implementation for production use
@@ -131,7 +137,7 @@ export async function GET(request) {
       const travelTime1 = Math.round(distance1 / 1000 * 1);
       const travelTime2 = Math.round(distance2 / 1000 * 1);
       
-      return NextResponse.json({
+      return rateLimitResult.getResponse({
         success: true,
         data: {
           midpoint,
@@ -151,7 +157,7 @@ export async function GET(request) {
     if (strategy === 'simple') {
       const midpoint = calculateSimpleMidpoint(lat1, lng1, lat2, lng2);
       
-      return NextResponse.json({
+      return rateLimitResult.getResponse({
         success: true,
         data: {
           midpoint,
@@ -196,7 +202,7 @@ export async function GET(request) {
       poiDensities.sort((a, b) => b.places - a.places);
       const bestMidpoint = poiDensities[0];
       
-      return NextResponse.json({
+      return rateLimitResult.getResponse({
         success: true,
         data: {
           midpoint: bestMidpoint.point,
@@ -256,7 +262,7 @@ export async function GET(request) {
         // If Distance Matrix fails, fall back to POI density only
         const bestMidpoint = poiDensities.sort((a, b) => b.places - a.places)[0];
         
-        return NextResponse.json({
+        return rateLimitResult.getResponse({
           success: true,
           data: {
             midpoint: bestMidpoint.point,
@@ -312,7 +318,7 @@ export async function GET(request) {
       scoredMidpoints.sort((a, b) => b.score - a.score);
       const bestMidpoint = scoredMidpoints[0];
       
-      return NextResponse.json({
+      return rateLimitResult.getResponse({
         success: true,
         data: {
           midpoint: bestMidpoint.point,
@@ -325,7 +331,7 @@ export async function GET(request) {
     // Default fallback to simple midpoint if strategy is not recognized
     const simpleMidpoint = calculateSimpleMidpoint(lat1, lng1, lat2, lng2);
     
-    return NextResponse.json({
+    return rateLimitResult.getResponse({
       success: true,
       data: {
         midpoint: simpleMidpoint,
@@ -340,7 +346,7 @@ export async function GET(request) {
     console.error('Midpoint calculation error:', error);
     
     // Return the error to make debugging easier
-    return NextResponse.json({
+    return rateLimitResult.getResponse({
       success: false,
       error: 'Midpoint calculation error',
       message: error.message,
@@ -350,6 +356,6 @@ export async function GET(request) {
         lat: (lat1 + lat2) / 2,
         lng: (lng1 + lng2) / 2
       }
-    }, { status: 500 });
+    }, 500);
   }
 }

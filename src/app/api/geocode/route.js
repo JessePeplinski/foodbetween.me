@@ -5,10 +5,16 @@ import { rateLimit } from '@/lib/rateLimiter';
 
 export async function GET(request) {
   // Apply rate limiting (30 requests per minute for geocoding)
-  const rateLimitResponse = rateLimit(request, { maxRequests: 30 });
-  if (rateLimitResponse) return rateLimitResponse;
+  const rateLimitResult = rateLimit(request, { maxRequests: 30 });
+  if (rateLimitResult.isRateLimited) return rateLimitResult;
   
   const { searchParams } = new URL(request.url);
+  
+  // Handle ping requests for rate limit checking
+  if (searchParams.get('ping') === 'true') {
+    return rateLimitResult.getResponse({ success: true, message: 'API is operational' });
+  }
+  
   const address = searchParams.get('address');
   
   // Debug info to log
@@ -17,9 +23,9 @@ export async function GET(request) {
   console.log('API Key length:', process.env.GOOGLE_MAPS_API_KEY ? process.env.GOOGLE_MAPS_API_KEY.length : 0);
   
   if (!address) {
-    return NextResponse.json(
+    return rateLimitResult.getResponse(
       { success: false, error: 'Address is required' },
-      { status: 400 }
+      400
     );
   }
   
@@ -28,15 +34,15 @@ export async function GET(request) {
     if (shouldUseMock()) {
       console.log('[MOCK API] Using mock geocode API for:', address);
       const mockResponse = await mockApi.geocode(address);
-      return NextResponse.json(mockResponse);
+      return rateLimitResult.getResponse(mockResponse);
     }
     
     // Verify API key is available
     if (!process.env.GOOGLE_MAPS_API_KEY) {
       console.error('Missing Google Maps API key in server environment');
-      return NextResponse.json(
+      return rateLimitResult.getResponse(
         { success: false, error: 'Configuration error', detail: 'API key missing' },
-        { status: 500 }
+        500
       );
     }
     
@@ -56,37 +62,37 @@ export async function GET(request) {
     
     if (data.status !== 'OK') {
       console.error('Geocode API error:', data.status, data.error_message || 'No detailed error message');
-      return NextResponse.json(
+      return rateLimitResult.getResponse(
         { 
           success: false, 
           error: data.status,
           message: data.error_message || 'Geocoding failed',
           detail: 'Google API returned non-OK status'
         },
-        { status: 400 }
+        400
       );
     }
     
     const location = data.results[0].geometry.location;
     
-    return NextResponse.json({
+    return rateLimitResult.getResponse({
       success: true,
       data: {
         lat: location.lat,
         lng: location.lng,
         formatted_address: data.results[0].formatted_address,
-      },
+      }
     });
   } catch (error) {
     console.error('Geocoding error:', error);
-    return NextResponse.json(
+    return rateLimitResult.getResponse(
       { 
         success: false, 
         error: 'Server error', 
         message: error.message,
         stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
       },
-      { status: 500 }
+      500
     );
   }
 }

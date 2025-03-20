@@ -52,6 +52,13 @@ export function rateLimit(request, options = {}) {
     }
   }
   
+  // Generate rate limit headers
+  const rateLimitHeaders = {
+    'X-RateLimit-Limit': maxRequests.toString(),
+    'X-RateLimit-Remaining': Math.max(0, maxRequests - ipData.count).toString(),
+    'X-RateLimit-Reset': Math.ceil(ipData.resetTime / 1000).toString()
+  };
+  
   // Check if rate limit exceeded
   if (ipData.count > maxRequests) {
     const retryAfter = Math.ceil((ipData.resetTime - now) / 1000);
@@ -66,14 +73,21 @@ export function rateLimit(request, options = {}) {
         status: 429,
         headers: {
           'Retry-After': retryAfter.toString(),
-          'X-RateLimit-Limit': maxRequests.toString(),
-          'X-RateLimit-Remaining': '0',
-          'X-RateLimit-Reset': Math.ceil(ipData.resetTime / 1000).toString()
+          ...rateLimitHeaders
         }
       }
     );
   }
   
-  // If not rate limited, return null (allowing the request to proceed)
-  return null;
+  // If not rate limited, return null (allowing the request to proceed) with rate limit info
+  return {
+    isRateLimited: false,
+    headers: rateLimitHeaders,
+    getResponse: (data, status = 200) => {
+      return NextResponse.json(data, {
+        status,
+        headers: rateLimitHeaders
+      });
+    }
+  };
 }
