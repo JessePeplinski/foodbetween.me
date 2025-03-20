@@ -369,6 +369,9 @@
 
   // Helper function to check if we should use mock API
   export const shouldUseMock = () => {
-    // Only use the environment variable
-    return process.env.NEXT_PUBLIC_USE_MOCK_API === 'true';
+    const useMock = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true';
+    if (useMock) {
+      console.warn('USING MOCK API MODE - This should not happen in production!');
+    }
+    return useMock;
   };
