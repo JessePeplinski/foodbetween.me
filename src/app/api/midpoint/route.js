@@ -339,22 +339,17 @@ export async function GET(request) {
   } catch (error) {
     console.error('Midpoint calculation error:', error);
     
-    // Fall back to simple midpoint calculation if something goes wrong
-    const simpleMidpoint = {
-      lat: (lat1 + lat2) / 2,
-      lng: (lng1 + lng2) / 2
-    };
-    
+    // Return the error to make debugging easier
     return NextResponse.json({
-      success: true,
-      data: {
-        midpoint: simpleMidpoint,
-        method: 'simple_fallback',
-        details: {
-          error: error.message,
-          description: 'Simple midpoint calculation due to error'
-        }
+      success: false,
+      error: 'Midpoint calculation error',
+      message: error.message,
+      stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined,
+      // Include a fallback midpoint for the client to use if needed
+      fallback: {
+        lat: (lat1 + lat2) / 2,
+        lng: (lng1 + lng2) / 2
       }
-    });
+    }, { status: 500 });
   }
 }
