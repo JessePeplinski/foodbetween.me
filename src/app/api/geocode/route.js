@@ -5,12 +5,16 @@ import { rateLimit } from '@/lib/rateLimiter';
 
 export async function GET(request) {
   // Apply rate limiting (30 requests per minute for geocoding)
-  const rateLimitResult = rateLimit(request, { maxRequests: 30 });
+  const rateLimitResult = rateLimit(request, { 
+    maxRequests: 30,
+    endpoint: 'geocode' // Add endpoint identifier
+  });
+  
   if (rateLimitResult.isRateLimited) return rateLimitResult;
   
   const { searchParams } = new URL(request.url);
   
-  // Handle ping requests for rate limit checking
+  // Handle ping requests for rate limit checking (DEPRECATED - not used anymore)
   if (searchParams.get('ping') === 'true') {
     return rateLimitResult.getResponse({ success: true, message: 'API is operational' });
   }

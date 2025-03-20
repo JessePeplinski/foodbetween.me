@@ -1,7 +1,8 @@
 // src/lib/rateLimiter.js
 import { NextResponse } from 'next/server';
+import { updateRateLimitData } from './rateLimitStore';
 
-// Simple in-memory cache for rate limiting
+// Simple in-memory cache for rate limiting by IP address
 // Note: This will reset when the serverless function cold starts
 const ipRequestCounts = new Map();
 
@@ -11,12 +12,14 @@ const ipRequestCounts = new Map();
  * @param {Object} options - Rate limiting options
  * @param {number} options.maxRequests - Maximum requests allowed in the time window (default: 60)
  * @param {number} options.windowMs - Time window in milliseconds (default: 60000 - 1 minute)
- * @returns {NextResponse|null} - Error response if rate limited, null if allowed
+ * @param {string} options.endpoint - The API endpoint identifier for storing rate limit data
+ * @returns {NextResponse|Object} - Error response if rate limited, or object with rate limit info
  */
 export function rateLimit(request, options = {}) {
   // Default settings: 60 requests per minute
   const maxRequests = options.maxRequests || 60;
   const windowMs = options.windowMs || 60000; // 1 minute in milliseconds
+  const endpoint = options.endpoint || 'unknown';
   
   // Get client IP from Netlify headers or request
   const ip = 
@@ -52,11 +55,23 @@ export function rateLimit(request, options = {}) {
     }
   }
   
-  // Generate rate limit headers
+  // Generate rate limit headers and data
+  const rateLimitData = {
+    limit: maxRequests,
+    remaining: Math.max(0, maxRequests - ipData.count),
+    reset: Math.ceil(ipData.resetTime / 1000),
+    used: ipData.count
+  };
+  
+  // Store the rate limit data for this endpoint
+  updateRateLimitData(endpoint, rateLimitData);
+  
+  // Convert data to headers format
   const rateLimitHeaders = {
-    'X-RateLimit-Limit': maxRequests.toString(),
-    'X-RateLimit-Remaining': Math.max(0, maxRequests - ipData.count).toString(),
-    'X-RateLimit-Reset': Math.ceil(ipData.resetTime / 1000).toString()
+    'X-RateLimit-Limit': rateLimitData.limit.toString(),
+    'X-RateLimit-Remaining': rateLimitData.remaining.toString(),
+    'X-RateLimit-Reset': rateLimitData.reset.toString(),
+    'X-RateLimit-Used': rateLimitData.used.toString()
   };
   
   // Check if rate limit exceeded
@@ -79,9 +94,10 @@ export function rateLimit(request, options = {}) {
     );
   }
   
-  // If not rate limited, return null (allowing the request to proceed) with rate limit info
+  // If not rate limited, return object with rate limit info
   return {
     isRateLimited: false,
+    data: rateLimitData,
     headers: rateLimitHeaders,
     getResponse: (data, status = 200) => {
       return NextResponse.json(data, {

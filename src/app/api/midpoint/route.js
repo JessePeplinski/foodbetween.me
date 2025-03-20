@@ -76,12 +76,16 @@ function generatePotentialMidpoints(lat1, lng1, lat2, lng2, numPoints = 5) {
 
 export async function GET(request) {
   // Apply rate limiting (15 requests per minute for midpoint calculations - more resource intensive)
-  const rateLimitResult = rateLimit(request, { maxRequests: 15 });
+  const rateLimitResult = rateLimit(request, { 
+    maxRequests: 15,
+    endpoint: 'midpoint' // Add endpoint identifier
+  });
+  
   if (rateLimitResult.isRateLimited) return rateLimitResult;
 
   const { searchParams } = new URL(request.url);
   
-  // Handle ping requests for rate limit checking
+  // Handle ping requests for rate limit checking (DEPRECATED - not used anymore)
   if (searchParams.get('ping') === 'true') {
     return rateLimitResult.getResponse({ success: true, message: 'API is operational' });
   }
@@ -90,6 +94,7 @@ export async function GET(request) {
   const lng1 = parseFloat(searchParams.get('lng1'));
   const lat2 = parseFloat(searchParams.get('lat2'));
   const lng2 = parseFloat(searchParams.get('lng2'));
+  
   const strategy = searchParams.get('strategy') || 'optimized'; // Default to optimized
   const poiType = searchParams.get('poiType') || 'restaurant'; // Default to restaurant
   
