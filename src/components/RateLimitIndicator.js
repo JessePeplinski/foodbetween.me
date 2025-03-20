@@ -1,7 +1,7 @@
 // src/components/RateLimitIndicator.js
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Activity, AlertCircle } from 'lucide-react';
 import { useRateLimits } from '@/context/RateLimitContext';
 
@@ -15,13 +15,26 @@ const RateLimitIndicator = () => {
   } = useRateLimits();
   
   const [expanded, setExpanded] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
   
-  // Helper function to format time until reset
+  // Set up a timer to update the current time every second when expanded
+  useEffect(() => {
+    // Only set up timer when the panel is expanded
+    if (!expanded) return;
+    
+    const intervalId = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    
+    // Clean up interval on unmount or when panel is closed
+    return () => clearInterval(intervalId);
+  }, [expanded]);
+  
+  // Helper function to format time until reset with live updates
   const formatTimeRemaining = (resetTime) => {
     if (!resetTime) return 'Unknown';
     
-    const now = new Date();
-    const diffMs = resetTime - now;
+    const diffMs = resetTime - currentTime;
     
     if (diffMs <= 0) return 'Now';
     
@@ -29,7 +42,9 @@ const RateLimitIndicator = () => {
     if (diffSeconds < 60) return `${diffSeconds}s`;
     
     const diffMinutes = Math.floor(diffSeconds / 60);
-    return `${diffMinutes}m ${diffSeconds % 60}s`;
+    const remainingSeconds = diffSeconds % 60;
+    
+    return `${diffMinutes}m ${remainingSeconds}s`;
   };
   
   // Calculate overall usage status
@@ -116,19 +131,32 @@ const RateLimitIndicator = () => {
                   return 'bg-green-500';
                 };
                 
+                // Determine if this endpoint is reset (timer reached 0)
+                const isReset = data.reset && data.reset <= currentTime;
+                
                 return (
                   <div key={name} className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-medium capitalize">{name}</span>
-                      <span className={`${data.remaining === 0 ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
+                      <span className={`${data.remaining === 0 && !isReset ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
                         {data.remaining} / {data.limit} remaining
                       </span>
                     </div>
                     <div className="h-1.5 w-full bg-gray-200 dark:bg-gray-700 rounded overflow-hidden">
-                      <div className={`h-full ${getBarColor()}`} style={{ width: `${usagePercentage}%` }}></div>
+                      <div 
+                        className={`h-full ${getBarColor()} transition-all duration-300`} 
+                        style={{ width: `${usagePercentage}%` }}
+                      ></div>
                     </div>
-                    <div className="text-xs text-gray-500">
-                      Resets in: {formatTimeRemaining(data.reset)}
+                    <div className="text-xs text-gray-500 flex justify-between">
+                      <span>
+                        Resets in: {formatTimeRemaining(data.reset)}
+                      </span>
+                      {isReset && (
+                        <span className="text-green-600">
+                          ✓ Reset
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
