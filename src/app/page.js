@@ -13,6 +13,7 @@ import MidpointOptionsSkeleton from '@/components/MidpointOptionsSkeleton';
 import PlaceCardsSkeleton from '@/components/PlaceCardsSkeleton';
 import { AlertTriangle, RefreshCw, AlertCircle } from 'lucide-react';
 import { useRateLimits } from '@/context/RateLimitContext';
+import { shouldUseMock } from '@/lib/mockApi';
 
 export default function Home() {
   const [addresses, setAddresses] = useState({
@@ -97,10 +98,10 @@ export default function Home() {
     setRateLimitError(null);
     
     // Check if we've hit rate limits before making API calls
-    if (hasReachedRateLimit()) {
+    if (!shouldUseMock() && hasReachedRateLimit()) {
       const lowestEndpoint = getLowestRemainingEndpoint();
       const resetTime = lowestEndpoint ? getTimeUntilReset(lowestEndpoint) : 'a few minutes';
-      
+
       setRateLimitError(
         `Rate limit reached. Please wait ${resetTime} before trying again.`
       );
@@ -432,7 +433,7 @@ export default function Home() {
       <div className="flex justify-center mb-8">
         <Button 
           onClick={handleSearch}
-          disabled={loading || hasReachedRateLimit()}
+          disabled={loading || (!shouldUseMock() && hasReachedRateLimit())}
           className="px-8"
         >
           {loading ? (
@@ -440,7 +441,7 @@ export default function Home() {
               <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
               Searching...
             </>
-          ) : hasReachedRateLimit() ? (
+          ) : !shouldUseMock() && hasReachedRateLimit() ? (
             <>
               <AlertCircle className="h-4 w-4 mr-2" />
               Rate Limited

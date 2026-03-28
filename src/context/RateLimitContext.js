@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useState, useContext, useEffect } from 'react';
+import { shouldUseMock } from '@/lib/mockApi';
 
 // Define API cost constants (in USD)
 // These are approximate costs based on Google Maps API pricing
@@ -224,12 +225,18 @@ export const RateLimitProvider = ({ children }) => {
 
   // Fetch rate limits on first render and every 30 seconds
   useEffect(() => {
+    // Skip rate limit fetching in demo mode
+    if (shouldUseMock()) {
+      setLoading(false);
+      return;
+    }
+
     // Initial fetch
     fetchRateLimits();
-    
+
     // Set up interval for periodic updates
     const intervalId = setInterval(fetchRateLimits, 30000);
-    
+
     // Clean up on unmount
     return () => clearInterval(intervalId);
   }, []);

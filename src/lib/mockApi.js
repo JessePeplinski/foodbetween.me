@@ -368,10 +368,8 @@
   };
 
   // Helper function to check if we should use mock API
+  // Demo mode is ON by default. Set NEXT_PUBLIC_USE_MOCK_API=false to use real APIs.
   export const shouldUseMock = () => {
-    const useMock = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true';
-    if (useMock) {
-      console.warn('USING MOCK API MODE - This should not happen in production!');
-    }
-    return useMock;
+    const useReal = process.env.NEXT_PUBLIC_USE_MOCK_API === 'false';
+    return !useReal;
   };

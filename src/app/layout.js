@@ -33,7 +33,7 @@ export default function RootLayout({ children }) {
             {/* Footer */}
             <footer className="py-4 px-4 border-t border-gray-200 bg-white dark:bg-gray-900 dark:border-gray-800">
               <div className="container mx-auto text-xs text-gray-500 dark:text-gray-400 text-center">
-                <p>API usage is rate limited. See the API Limits indicator for your current status.</p>
+                <p>Find the perfect place to meet, halfway between two locations.</p>
               </div>
             </footer>
           </div>

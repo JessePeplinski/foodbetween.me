@@ -4,13 +4,21 @@
 import { useState, useEffect } from 'react';
 import { Activity, AlertCircle, DollarSign, RotateCw, Clock } from 'lucide-react';
 import { useRateLimits } from '@/context/RateLimitContext';
+import { shouldUseMock } from '@/lib/mockApi';
 
-const RateLimitIndicator = () => {
-  const { 
-    limits, 
+const DemoModeBadge = () => (
+  <div className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm">
+    <Activity className="h-4 w-4 text-green-600" />
+    <span className="text-xs font-medium text-green-700">Demo Mode</span>
+  </div>
+);
+
+const RateLimitIndicatorInner = () => {
+  const {
+    limits,
     costs,
-    loading, 
-    error, 
+    loading,
+    error,
     fetchRateLimits,
     hasReachedRateLimit,
     resetAllTracking,
@@ -274,6 +282,13 @@ const RateLimitIndicator = () => {
       )}
     </div>
   );
+};
+
+const RateLimitIndicator = () => {
+  if (shouldUseMock()) {
+    return <DemoModeBadge />;
+  }
+  return <RateLimitIndicatorInner />;
 };
 
 export default RateLimitIndicator;
