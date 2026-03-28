@@ -477,15 +477,11 @@ export default function Home() {
             {optionsLoading ? (
               <MidpointOptionsSkeleton />
             ) : midpointInfo ? (
-              <MidpointOptions 
-                midpointInfo={midpointInfo}
+              <MidpointOptions
                 searchRadius={searchRadius}
-                poiType={poiType}
                 resultsLimit={resultsLimit}
                 onRadiusChange={handleRadiusChange}
-                onStrategyChange={handleStrategyChange}
                 onResultsLimitChange={handleResultsLimitChange}
-                selectedStrategy={midpointStrategy}
               />
             ) : null}
           </div>
